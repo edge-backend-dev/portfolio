@@ -1,0 +1,3297 @@
+/* ============================================================
+   SHELL — window frame + Windows 11 skin
+   Class names map 1:1 to the React components. Colors/radii come
+   entirely from tokens.css so other skins restyle by swapping tokens.
+   ============================================================ */
+
+.shell-root {
+  position: fixed;
+  inset: 0;
+  font-family: var(--font-ui);
+  color: var(--text);
+  overflow: hidden;
+}
+
+/* ---------- desktop ---------- */
+.win-desktop {
+  position: absolute;
+  inset: 0;
+  background: var(--desktop);
+  overflow: hidden;
+}
+
+/* ---------- wallpaper (Windows + macOS) ---------- */
+.wp {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-wallpaper);
+  overflow: hidden;
+  pointer-events: none;
+}
+.wp-layer {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  will-change: opacity;
+  transition: opacity 1200ms var(--ease-out);
+}
+.wp-scrim {
+  position: absolute;
+  inset: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wp-layer {
+    transition-duration: 1ms;
+  }
+}
+
+.win-shortcuts {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: var(--z-wallpaper);
+}
+.win-shortcut {
+  width: 84px;
+  padding: 8px 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+.win-shortcut:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.win-shortcut-icon {
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+.win-shortcut-label {
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+/* ---------- window ---------- */
+.win-frame {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--win-radius);
+  box-shadow: var(--shadow-window);
+  overflow: hidden;
+  will-change: transform, opacity;
+  /* resting state is fully visible; keyframe just plays once on mount */
+  animation: winOpen var(--dur-med) var(--ease-out);
+}
+@keyframes winOpen {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.win-frame.maximized {
+  border-radius: 0;
+}
+/* Win11 focus: no accent outline — the focused window simply carries the
+   deeper shadow while unfocused ones fade their chrome slightly. */
+.win-frame.focused {
+  border-color: var(--border-strong);
+}
+.win-frame:not(.focused) {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+.win-frame:not(.focused) .win-tb-title {
+  color: var(--text-faint);
+}
+
+.win-titlebar {
+  height: var(--titlebar-h);
+  flex: 0 0 var(--titlebar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 12px;
+  user-select: none;
+  touch-action: none;
+  cursor: default;
+}
+.win-tb-app {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.win-tb-icon {
+  display: block;
+}
+.win-tb-title {
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.win-caption {
+  display: flex;
+  height: 100%;
+}
+.win-cap {
+  width: 46px;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+.win-cap:hover {
+  background: var(--surface-hover);
+}
+.win-cap-close:hover {
+  background: var(--close-hover);
+  color: var(--close-hover-text);
+}
+
+.win-content {
+  flex: 1 1 auto;
+  overflow: auto;
+  background: var(--surface-solid);
+}
+
+.win-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+  touch-action: none;
+  z-index: 3;
+}
+
+/* ---------- snap layouts flyout (hover the maximize button) ---------- */
+.snap-anchor {
+  position: relative;
+  display: flex;
+  height: 100%;
+}
+.snap-flyout {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 2px;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  width: 236px;
+  padding: 8px;
+  background: var(--flyout-bg, var(--surface));
+  backdrop-filter: blur(var(--blur)) saturate(1.5);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.35);
+  animation: snapIn var(--dur-fast) var(--ease-out);
+  cursor: default;
+}
+@keyframes snapIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.snap-layout {
+  position: relative;
+  height: 56px;
+  border-radius: 4px;
+  background: var(--snap-card, rgba(128, 128, 128, 0.1));
+}
+.snap-zone {
+  position: absolute;
+  border: 0;
+  padding: 0;
+  border-radius: 3px;
+  background: var(--snap-zone, rgba(128, 128, 128, 0.3));
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+.snap-zone:hover,
+.snap-zone:focus-visible {
+  background: var(--accent);
+}
+
+/* ---------- task view ---------- */
+.tv-overlay {
+  position: absolute;
+  inset: 0 0 var(--taskbar-h);
+  background: rgba(10, 16, 30, 0.4);
+  backdrop-filter: blur(24px) saturate(1.3);
+  display: grid;
+  place-items: center;
+  z-index: var(--z-overlay);
+  animation: tvIn var(--dur-fast) var(--ease-out);
+}
+@keyframes tvIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.tv-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  justify-content: center;
+  max-width: min(1000px, calc(100vw - 48px));
+}
+.tv-card {
+  position: relative;
+  width: 300px;
+}
+/* Win11 task view: app icon + title above each live thumbnail */
+.tv-caption {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 22px;
+  margin-bottom: 8px;
+  padding: 0 2px;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.tv-caption-title {
+  flex: 1;
+  min-width: 0;
+  padding-right: 22px; /* room for the hover × */
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tv-thumb {
+  position: relative;
+  display: block;
+  width: 300px;
+  height: 185px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-solid);
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32);
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast),
+    border-color var(--dur-fast);
+}
+/* The selection ring is OUTSET, like Mission Control's — an inset ring is drawn
+   inside the border box, so its corners follow a tighter radius than the card's
+   and leave the outer edge showing through. Recolouring the border too keeps a
+   solid band right up to the edge with no seam between ring and content. */
+.tv-card:hover .tv-thumb {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32), 0 0 0 2px var(--accent);
+}
+/* a live, scaled-down clone of the app page — the real window thumbnail */
+.tv-thumb-frame {
+  width: 680px;
+  height: 420px;
+  transform: scale(0.4412);
+  transform-origin: top left;
+  pointer-events: none;
+  overflow: hidden;
+  background: var(--surface-solid);
+}
+.tv-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--dur-fast), background var(--dur-fast);
+}
+.tv-card:hover .tv-close,
+.tv-close:focus-visible {
+  opacity: 1;
+}
+.tv-close:hover {
+  background: var(--close-hover, #c42b1c);
+  color: var(--close-hover-text, #fff);
+}
+.tv-empty {
+  color: #fff;
+  font-size: var(--text-md);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+/* A minimized window is still listed here — dimmed until hovered, so the eye
+   separates "on screen" from "tucked away" without having to read captions.
+   Dims the thumb rather than the frame inside it: fading the frame only blends
+   it into the thumb's own light backing, which reads as no change at all. */
+.tv-card[data-minimized] .tv-thumb {
+  opacity: 0.5;
+  filter: saturate(0.55);
+}
+.tv-card[data-minimized]:hover .tv-thumb {
+  opacity: 1;
+  filter: none;
+}
+/* anchored to the card, whose bottom edge is the thumb's bottom edge */
+.tv-badge {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 2px 7px;
+  pointer-events: none;
+  border-radius: 999px;
+  background: rgba(10, 16, 30, 0.72);
+  color: #fff;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+}
+
+/* ---------- mission control (macOS) ---------- */
+/* Sits above the windows but UNDER the chrome (--z-chrome), so the menu bar and
+   dock stay live on top of the blur exactly as they do on macOS. */
+.mc-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: calc(var(--z-chrome) - 1);
+  padding: calc(var(--menubar-h) + 26px) 24px calc(var(--dock-h) + 34px);
+  overflow-y: auto;
+  background: rgba(12, 10, 24, 0.42);
+  backdrop-filter: blur(28px) saturate(1.4);
+  animation: mcIn var(--dur-med) var(--ease-out);
+}
+@keyframes mcIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.mc-stage {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  min-height: 100%;
+}
+.mc-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 26px 30px;
+}
+.mc-card {
+  position: relative;
+  width: 268px;
+  animation: mcCard var(--dur-med) var(--ease-out) backwards;
+}
+/* windows fly in from the desktop rather than fading on the spot */
+@keyframes mcCard {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.94);
+  }
+}
+.mc-thumb {
+  display: block;
+  width: 268px;
+  height: 168px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--win-radius);
+  overflow: hidden;
+  background: var(--surface-solid);
+  cursor: default;
+  box-shadow: var(--shadow-window);
+  transition: transform var(--dur-med) var(--ease-out), box-shadow var(--dur-med),
+    opacity var(--dur-med), filter var(--dur-med);
+}
+.mc-card:hover .mc-thumb,
+.mc-thumb:focus-visible {
+  transform: scale(1.04);
+  box-shadow: var(--shadow-window), 0 0 0 3px var(--accent);
+}
+/* a live, scaled-down clone of the app page — 640 × 402 at 0.41875 → 268 × 168 */
+.mc-thumb-frame {
+  width: 640px;
+  height: 402px;
+  transform: scale(0.41875);
+  transform-origin: top left;
+  pointer-events: none;
+  overflow: hidden;
+  background: var(--surface-solid);
+}
+.mc-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 9px;
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+/* macOS hangs its close badge off the top-left corner, not inside the frame */
+.mc-quit {
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: #4a4a4f;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: default;
+  opacity: 0;
+  transform: scale(0.6);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  transition: opacity var(--dur-fast), transform var(--dur-fast) var(--ease-spring);
+}
+.mc-card:hover .mc-quit,
+.mc-quit:focus-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+/* Real Mission Control drops minimized windows entirely; this skin keeps them
+   in their own row, dimmed, since finding them is the reason to come here.
+   The dim sits on the thumb, not the frame inside it — fading the frame just
+   blends it into the thumb's own near-white backing and reads as no change. */
+.mc-card[data-minimized] .mc-thumb {
+  opacity: 0.45;
+  filter: saturate(0.55);
+}
+.mc-card[data-minimized]:hover .mc-thumb {
+  opacity: 1;
+  filter: none;
+}
+.mc-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.mc-divider::before,
+.mc-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.2);
+}
+.mc-empty {
+  margin: 0;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: var(--text-md);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- taskbar (Windows 11: full-width, centred icons, tray) ---------- */
+.win-taskbar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--taskbar-h);
+  display: flex;
+  align-items: center;
+  padding: 0 2px 0 8px;
+  background: var(--taskbar-bg);
+  backdrop-filter: blur(var(--blur)) saturate(1.6);
+  border-top: 1px solid var(--taskbar-border);
+  color: var(--taskbar-text);
+  z-index: var(--z-chrome);
+}
+.win-tb-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  max-width: calc(100vw - 220px);
+  /* visible so hover thumbnail previews can rise above the bar without clipping */
+  overflow: visible;
+}
+.win-tb-btn {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  position: relative;
+  color: var(--taskbar-text);
+  transition: background var(--dur-fast);
+}
+.win-tb-btn:hover {
+  background: var(--taskbar-hover);
+}
+.win-tb-btn:active svg {
+  transform: scale(0.86);
+}
+.win-tb-btn svg {
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.win-tb-btn.active-btn {
+  background: var(--taskbar-hover);
+}
+.win-tb-btn.open::after {
+  content: "";
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--text-faint);
+  transition: width var(--dur-fast);
+}
+.win-tb-btn.active::after {
+  width: 16px;
+  background: var(--accent);
+}
+
+/* taskbar hover thumbnail preview (Win11) */
+.win-tb-slot {
+  position: relative;
+  display: flex;
+}
+.tb-preview {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 248px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--flyout-bg);
+  backdrop-filter: blur(var(--blur)) saturate(1.6);
+  border: 1px solid var(--taskbar-border);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.3);
+  color: var(--taskbar-text);
+  z-index: var(--z-overlay);
+  animation: tb-preview-in 140ms var(--ease-out);
+}
+@keyframes tb-preview-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+.tb-preview-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 1px 1px 7px;
+}
+.tb-preview-title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tb-preview-close {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  background: transparent;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  color: var(--taskbar-text);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.tb-preview-close:hover {
+  background: var(--close-hover);
+  color: var(--close-hover-text);
+}
+.tb-preview-thumb {
+  position: relative;
+  display: block;
+  width: 232px;
+  height: 143px;
+  padding: 0;
+  border: 1px solid var(--taskbar-border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface-solid);
+  cursor: pointer;
+}
+.tb-preview-thumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 0 transparent;
+  transition: box-shadow var(--dur-fast);
+  pointer-events: none;
+}
+.tb-preview-thumb:hover::after {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+/* a live, scaled-down clone of the app page — the real "thumbnail" */
+.tb-preview-frame {
+  width: 680px;
+  height: 420px;
+  transform: scale(0.3412);
+  transform-origin: top left;
+  pointer-events: none;
+  overflow: hidden;
+  background: var(--surface-solid);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tb-preview {
+    animation-duration: 1ms;
+  }
+}
+
+/* system tray */
+.win-tb-tray {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 100%;
+  padding: 4px 0;
+}
+.win-tray-btn {
+  height: 40px;
+  border: 0;
+  background: transparent;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 7px;
+  cursor: pointer;
+  color: var(--taskbar-text);
+  transition: background var(--dur-fast);
+}
+.win-tray-btn:hover {
+  background: var(--taskbar-hover);
+}
+.win-tray-chev {
+  padding: 0 6px;
+}
+.win-clock {
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0;
+  font-size: var(--text-xs);
+  line-height: 1.3;
+  padding: 0 10px;
+  font-variant-numeric: tabular-nums;
+}
+.win-show-desktop {
+  width: 6px;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  margin-left: 2px;
+  background: transparent;
+  border-left: 1px solid transparent;
+  cursor: pointer;
+}
+.win-show-desktop:hover {
+  border-left-color: var(--text-faint);
+}
+
+/* ============================================================
+   macOS skin
+   ============================================================ */
+.mac-desktop {
+  position: absolute;
+  inset: 0;
+  background: var(--desktop);
+  overflow: hidden;
+}
+
+/* menu bar */
+.mac-menubar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--menubar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  background: rgba(28, 28, 36, 0.5);
+  /* Liquid Glass frosting for the top bar. No url() filter here — see glass.css
+     for why that breaks the blur; a plain blur reliably frosts on first paint. */
+  backdrop-filter: blur(30px) saturate(1.7);
+  color: #fff;
+  font-size: var(--text-sm);
+  z-index: var(--z-chrome);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+[data-theme="light"] .mac-menubar {
+  color: #1d1d1f;
+  background: rgba(255, 255, 255, 0.58);
+  text-shadow: none;
+}
+/* Reduce Transparency: solid menu bar. [data-os] scope is (0,2,0) to out-rank
+   the light-theme override above; text stays legible on --surface-solid. */
+@media (prefers-reduced-transparency: reduce) {
+  [data-os="macos"] .mac-menubar {
+    background: var(--surface-solid);
+    backdrop-filter: none;
+  }
+}
+.mac-menu-left,
+.mac-menu-right {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+.mac-menu-right {
+  gap: 3px;
+  padding-right: 4px;
+}
+.mac-apple,
+.mac-menu-app,
+.mac-menu-item {
+  display: inline-flex;
+  align-items: center;
+  height: calc(var(--menubar-h) - 6px);
+  padding: 0 9px;
+  border-radius: 5px;
+  cursor: default;
+  transition: background var(--dur-fast);
+}
+.mac-apple {
+  padding: 0 8px;
+}
+.mac-menu-app {
+  font-weight: 700;
+}
+.mac-menu-item {
+  font-weight: 400;
+}
+.mac-apple:hover,
+.mac-menu-app:hover,
+.mac-menu-item:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+[data-theme="light"] .mac-apple:hover,
+[data-theme="light"] .mac-menu-app:hover,
+[data-theme="light"] .mac-menu-item:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+.mac-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 5px;
+  height: calc(var(--menubar-h) - 6px);
+  border-radius: 5px;
+  cursor: default;
+  transition: background var(--dur-fast);
+}
+.mac-status:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+[data-theme="light"] .mac-status:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+/* the Spotlight glyph is the one interactive status item — reset button chrome */
+.mac-status-btn {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: default;
+  font: inherit;
+}
+.mac-siri {
+  text-shadow: none;
+}
+
+/* ---------- spotlight (macOS) ---------- */
+.mac-spot-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-overlay);
+}
+.mac-spotlight {
+  position: absolute;
+  top: 22vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(640px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  /* material from `.glass .glass--refract`; Tahoe-rounder corner + a touch
+     more blur than the default so search text over it stays legible */
+  --glass-radius: 18px;
+  --glass-blur: 24px;
+  color: var(--text);
+  overflow: hidden;
+  z-index: calc(var(--z-overlay) + 1);
+  animation: spotIn var(--dur-med) var(--ease-out);
+}
+@keyframes spotIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+.mac-spot-field {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  height: 56px;
+  color: var(--text-faint);
+}
+.mac-spot-field input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  font-size: var(--text-xl);
+  color: var(--text);
+}
+.mac-spot-field input::placeholder {
+  color: var(--text-faint);
+}
+.mac-spot-results {
+  border-top: 1px solid var(--border);
+  padding: 6px;
+  max-height: min(420px, 50vh);
+  overflow-y: auto;
+}
+.mac-spot-group-label {
+  padding: 8px 8px 4px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-faint);
+}
+.mac-spot-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: default;
+  min-width: 0;
+}
+.mac-spot-row[data-selected="true"] {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.mac-spot-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.mac-spot-title {
+  font-size: var(--text-base);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mac-spot-sub {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* the selected row inverts, so its subtitle can't stay a dim grey */
+.mac-spot-row[data-selected="true"] .mac-spot-sub {
+  color: var(--accent-text);
+  opacity: 0.75;
+}
+.mac-spot-empty {
+  border-top: 1px solid var(--border);
+  padding: 20px 16px;
+  color: var(--text-faint);
+  font-size: var(--text-sm);
+}
+.mac-clock {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px 0 5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+/* macOS windows: the genie effect (Web Animations API) owns open/close/minimize,
+   so suppress the shared CSS pop-in and let JS drive the transform. */
+.win-frame.macos {
+  animation: none;
+  border-radius: var(--win-radius);
+}
+
+/* ---------- macOS full screen ----------
+   The green button doesn't zoom, it goes FULL SCREEN: the window takes the whole
+   display and the menu bar, dock and title bar all slide away. Push the pointer
+   to the top or bottom edge and they slide back over the window — MacShell owns
+   the edge detection and flips [data-chrome-revealed] on .mac-desktop, so one
+   piece of state drives all three surfaces from here. */
+.win-frame.macos.fullscreen {
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+}
+/* Taking the title bar out of flow lets .win-content (flex: 1) claim the full
+   height, so the app really does fill the display — the bar then overlays it. */
+.win-frame.macos.fullscreen .win-titlebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  background: var(--surface);
+  backdrop-filter: blur(var(--blur)) saturate(1.4);
+  border-bottom: 1px solid var(--border);
+  transform: translateY(-100%);
+  transition: transform var(--dur-med) var(--ease-out);
+}
+/* Reduce Transparency: this fullscreen bar rides on translucent --surface, so
+   solidify it too. Selector mirrors the rule above (0,4,0) to win on order. */
+@media (prefers-reduced-transparency: reduce) {
+  .win-frame.macos.fullscreen .win-titlebar {
+    background: var(--surface-solid);
+    backdrop-filter: none;
+  }
+}
+/* Down to BELOW the menu bar, not to y=0: the menu bar is --z-chrome and the
+   window is only --z-window-focused, so a bar landing at 0 puts its traffic
+   lights (12px, centred in 38px → y 13-25) under the 25px menu bar and out of
+   sight. On a real Mac the two stack, they don't collide. */
+.mac-desktop[data-chrome-revealed] .win-frame.macos.fullscreen .win-titlebar {
+  transform: translateY(var(--menubar-h));
+}
+/* the chrome itself: hidden while a window is full screen, revealed on demand */
+.mac-desktop[data-fullscreen] .mac-menubar {
+  transform: translateY(-100%);
+}
+.mac-desktop[data-fullscreen] .mac-dock-wrap {
+  transform: translateY(calc(100% + 12px));
+}
+.mac-menubar,
+.mac-dock-wrap {
+  transition: transform var(--dur-med) var(--ease-out);
+}
+.mac-desktop[data-fullscreen][data-chrome-revealed] .mac-menubar,
+.mac-desktop[data-fullscreen][data-chrome-revealed] .mac-dock-wrap {
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mac-menubar,
+  .mac-dock-wrap,
+  .win-frame.macos.fullscreen .win-titlebar {
+    transition: none;
+  }
+}
+
+/* traffic lights */
+.win-frame.macos .win-titlebar {
+  justify-content: flex-start;
+  padding: 0 12px;
+  position: relative;
+}
+.mac-lights {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 2;
+}
+.mac-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 8px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.14);
+  transition: filter var(--dur-fast);
+}
+.mac-light span {
+  opacity: 0;
+  transition: opacity var(--dur-fast);
+  transform: translateY(-0.5px);
+}
+.win-titlebar:hover .mac-light span {
+  opacity: 1;
+}
+/* macOS won't minimize a full-screen window; the light greys out to say so */
+.mac-light:disabled {
+  background: rgba(150, 150, 150, 0.55);
+  box-shadow: none;
+  cursor: default;
+}
+.mac-light:disabled span {
+  display: none;
+}
+.mac-close {
+  background: var(--mac-close);
+}
+.mac-min {
+  background: var(--mac-min);
+}
+.mac-zoom {
+  background: var(--mac-zoom);
+}
+/* an unfocused macOS window greys its traffic lights, like the real OS */
+.win-frame.macos:not(.focused) .mac-light {
+  background: rgba(150, 150, 150, 0.55);
+  box-shadow: none;
+}
+.mac-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.mac-title-icon {
+  display: block;
+}
+
+/* dock */
+.mac-dock-wrap {
+  position: absolute;
+  bottom: 6px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: var(--z-chrome);
+  pointer-events: none;
+}
+.mac-dock {
+  /* one smooth easeOutQuint + one duration drive the whole magnification */
+  --dock-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dock-dur: 280ms;
+  display: flex;
+  align-items: flex-end;
+  /* Tahoe geometry: EQUAL padding on all four sides. The bar never grows
+     taller — with border-box its height is locked to the resting icon (48) +
+     --dock-pad on top & bottom + 1px border each side. Magnified icons rise
+     ABOVE the bar via visible overflow, exactly like macOS — the slab stays
+     put, only the apps move. No `gap`: item hitboxes are contiguous (spacing
+     lives in each item's side padding) so hovering slides straight from one
+     icon to the next and the magnification never drops between them; the
+     first/last item drop their outer side padding so the edge gap matches
+     --dock-pad and the padding reads equal on every side. */
+  --dock-pad: 12px;
+  height: calc(48px + var(--dock-pad) * 2 + 2px);
+  gap: 0;
+  padding: var(--dock-pad);
+  /* material now comes from `.glass .glass--refract`; the dock tunes the
+     corner, a stronger blur, and a MORE OPAQUE fill than the default so it
+     properly frosts over whatever it floats above (a window's text must not
+     read through it) — the default 0.42 fill is tuned for glass sitting over
+     the busy wallpaper, which is more forgiving.
+     Corner is CONCENTRIC with the icon squircle: the icon's ~22% perceived
+     corner (≈10.7px at 48px) + the 12px --dock-pad gap ≈ 22px, so the slab's
+     rounded corner runs parallel to the corner icon's instead of bulging past
+     it (30px read as too round against the crisp squircle). */
+  --glass-radius: 22px;
+  --glass-blur: 36px;
+  --glass-fill: rgba(255, 255, 255, 0.62);
+  pointer-events: auto;
+  max-width: calc(100vw - 20px);
+}
+[data-theme="dark"] .mac-dock {
+  --glass-fill: rgba(44, 46, 52, 0.64);
+}
+.mac-dock-item {
+  /* --dock-size drives the icon; growing it reflows the row so neighbours
+     are physically pushed aside — the authentic macOS magnify, not a scale. */
+  --dock-size: 48px;
+  position: relative;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  /* side padding gives the inter-icon spacing AND makes hitboxes touch, so
+     hover never falls into a dead gap between tiles */
+  padding: 0 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+/* Drop the outer side padding on the end tiles so the left/right edge gap
+   equals --dock-pad — making the slab's padding read equal on all four sides. */
+.mac-dock-item:first-child {
+  padding-left: 0;
+}
+.mac-dock-item:last-child {
+  padding-right: 0;
+}
+.mac-dock-item:hover {
+  z-index: 2;
+}
+/* Running-app indicator: a small dot in the bottom padding band, centred under
+   the icon. Anchored to the item's bottom (which is flex-end pinned), so it
+   holds still while the icon magnifies above it — and never magnifies itself. */
+.mac-dock-dot {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+[data-theme="dark"] .mac-dock-dot {
+  background: rgba(255, 255, 255, 0.7);
+}
+.mac-dock-icon {
+  display: block;
+  width: var(--dock-size);
+  height: var(--dock-size);
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.3));
+  transition: width var(--dock-dur) var(--dock-ease),
+    height var(--dock-dur) var(--dock-ease);
+  will-change: width, height;
+}
+/* Dock magnification, pure CSS: :has() reaches left, + reaches right.
+   The hovered tile is largest; each neighbour out to two positions ripples
+   down. Because the icon's box grows, flex-end alignment lifts it upward and
+   the row spreads on its own — no JS, no mouse-distance math. */
+.mac-dock-item:hover {
+  --dock-size: 82px;
+}
+.mac-dock-item:hover + .mac-dock-item,
+.mac-dock-item:has(+ .mac-dock-item:hover) {
+  --dock-size: 68px;
+}
+.mac-dock-item:hover + .mac-dock-item + .mac-dock-item,
+.mac-dock-item:has(+ .mac-dock-item + .mac-dock-item:hover) {
+  --dock-size: 56px;
+}
+/* name bubble above the icon (kept out of the scaled icon so text stays crisp) */
+.mac-dock-tip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: rgba(30, 30, 34, 0.9);
+  color: #fff;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-fast), transform var(--dur-fast) var(--ease-out);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 5;
+}
+.mac-dock-tip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(30, 30, 34, 0.9);
+}
+.mac-dock-item:hover .mac-dock-tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+/* divider before the Trash */
+.mac-dock-sep {
+  align-self: center;
+  width: 1px;
+  height: 46px;
+  margin: 0 5px;
+  background: rgba(255, 255, 255, 0.3);
+}
+[data-theme="light"] .mac-dock-sep {
+  background: rgba(0, 0, 0, 0.16);
+}
+.mac-dock-trash {
+  cursor: pointer;
+}
+
+/* ============================================================
+   iOS skin — home screen + fullscreen apps
+   ============================================================ */
+/* Geometry is taken from a real iPhone at 1x (pt == px): 60pt icons, 26pt side
+   margins, 16pt icon corner, 96pt dock. `.ios-screen` is capped at a real
+   device width so those numbers land where they do on the hardware. */
+.ios-viewport {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  background: #000;
+}
+.ios-screen {
+  position: relative;
+  width: 100%;
+  max-width: 430px; /* iPhone 14 Pro Max, the widest real portrait */
+  height: 100%;
+  overflow: hidden;
+  background: var(--desktop);
+  font-family: var(--font-ui);
+  color: var(--text);
+}
+
+/* status bar */
+.ios-statusbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--statusbar-h);
+  display: flex;
+  align-items: center;
+  padding: 6px 20px 0 32px;
+  z-index: 50;
+  pointer-events: none;
+}
+.ios-statusbar.on-dark {
+  color: #fff;
+}
+.ios-sb-time {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  /* iOS centres the time in the ear left of the notch rather than ragging it
+     against the screen edge. */
+  min-width: 54px;
+  text-align: center;
+}
+/* Holds open the space the notch/Dynamic Island occupies, so the two clusters
+   sit in their real positions instead of spreading to fill the bar. */
+.ios-sb-notch {
+  flex: 1;
+}
+.ios-sb-right {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* home screen */
+.ios-home {
+  position: absolute;
+  inset: 0;
+  padding: calc(var(--statusbar-h) + 14px) 26px 0;
+  display: flex;
+  flex-direction: column;
+  transform-origin: center;
+  transition: transform var(--dur-slow) var(--ease-out), opacity var(--dur-slow) var(--ease-out),
+    filter var(--dur-slow) var(--ease-out);
+}
+/* As an app opens, the home screen recedes and dims behind it — the depth cue
+   real iOS gives you. `:has()` flips the moment the app view mounts. */
+.ios-screen:has(.ios-appview):not(.closing) .ios-home {
+  transform: scale(1.12);
+  opacity: 0;
+  filter: blur(3px);
+}
+
+/* ---- widget row: two 2×2 widgets, same footprint as a 2×2 block of icons ---- */
+.ios-widgets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 26px;
+}
+.ios-widget {
+  aspect-ratio: 1 / 1;
+  border-radius: 22px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* iOS widgets cast a real shadow onto the wallpaper; they don't float flat */
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+/* Profile — tinted glass, white text, in the Weather widget's slot and idiom. */
+.ios-widget-profile {
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+/* Reduce Transparency: a solid systemGray keeps the white text legible in both
+   themes (a plain white/black surface would not). */
+@media (prefers-reduced-transparency: reduce) {
+  .ios-widget-profile {
+    background: #3a3a3c;
+    backdrop-filter: none;
+  }
+}
+.ios-widget-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  margin-bottom: auto;
+}
+.ios-widget-name {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  margin-top: 8px;
+}
+.ios-widget-role {
+  font-size: 12.5px;
+  opacity: 0.9;
+  margin-top: 3px;
+}
+
+/* Calendar — an opaque card, not glass. Widgets are their own material and
+   don't take the app surface token: --surface-solid is pure #000 in dark, which
+   reads as a hole punched in the wallpaper. Real widgets sit on elevated grey. */
+.ios-widget-calendar {
+  background: #ffffff;
+  color: #000000;
+  text-shadow: none;
+}
+[data-theme="dark"] .ios-widget-calendar {
+  background: #1c1c1e;
+  color: #ffffff;
+}
+.ios-cal-weekday {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: #ff3b30;
+}
+.ios-cal-date {
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -1.5px;
+  margin-top: 1px;
+}
+.ios-cal-agenda {
+  font-size: 13px;
+  color: var(--text-faint);
+  margin-top: auto;
+  line-height: 1.3;
+}
+
+/* ---- icon grid ---- */
+.ios-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  row-gap: 18px;
+  justify-items: center;
+  align-content: start;
+}
+.ios-app {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  /* iOS icons dip slightly under the finger rather than highlighting */
+  transition: transform 120ms var(--ease-out), opacity 120ms var(--ease-out);
+}
+.ios-app:active {
+  transform: scale(0.9);
+  opacity: 0.75;
+}
+.ios-app-icon {
+  display: block;
+  width: 60px;
+  height: 60px;
+  /* The artwork is the tile now (gradient squircle), so no backing plate — just
+     the contact shadow iOS icons drop on the wallpaper. */
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.22));
+}
+.ios-app-label {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: #fff;
+  letter-spacing: 0.1px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  max-width: 74px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- search pill ---- */
+/* iOS 16 dropped the page dots for a Search pill; dots only come back with a
+   second page, and this home screen has one — so there are none. */
+.ios-home-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 14px;
+}
+.ios-dots {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.ios-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+}
+.ios-dots span.on {
+  background: #fff;
+}
+.ios-search-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  padding: 6px 14px 6px 12px;
+  /* Liquid Glass — iOS 26's Search chip: a bright, clear glass pill. Material
+     comes from .glass (on the element); these vars just tune it. */
+  --glass-radius: 999px;
+  --glass-blur: 20px;
+  --glass-fill: rgba(255, 255, 255, 0.2);
+  --glass-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  /* keep the label legible over a light wallpaper showing through the glass */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.ios-search-pill:active {
+  --glass-fill: rgba(255, 255, 255, 0.34);
+}
+
+/* ---- dock ---- */
+.ios-dock {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 12px;
+  height: 96px;
+  margin: 0 -18px; /* pull past .ios-home's 26px padding to iOS's 8px inset */
+  padding: 0 14px;
+  /* Liquid Glass — iOS 26 dock: bright, clear frost over the wallpaper. Material
+     from .glass (on the element); these vars tune blur / tint / corner. */
+  --glass-radius: 34px;
+  --glass-blur: 30px;
+  --glass-fill: rgba(255, 255, 255, 0.28);
+  --glass-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+}
+[data-theme="dark"] .ios-dock {
+  --glass-fill: rgba(60, 62, 70, 0.34);
+}
+.ios-app.dock {
+  gap: 0;
+}
+
+/* The home indicator sits over the dock on the home screen. Decorative here —
+   the interactive one lives in the app view, where it means "back to home". */
+.ios-home-bar {
+  height: var(--home-ind-h);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+.ios-home-bar::after {
+  content: "";
+  width: 140px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* ---- Spotlight ---- */
+/* Opening search pushes the home screen back and blurs it — the same depth cue
+   as opening an app, except the home screen stays visible behind the results
+   instead of being replaced. Can't collide with the .ios-appview rule above:
+   choosing a result closes Spotlight and opens the app in one commit. */
+.ios-screen:has(.ios-spotlight) .ios-home {
+  transform: scale(1.06);
+  filter: blur(22px);
+}
+
+.ios-spotlight {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--statusbar-h);
+  animation: ios-spot-in 220ms var(--ease-out);
+}
+@keyframes ios-spot-in {
+  from {
+    opacity: 0;
+    transform: scale(1.03);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.ios-spot-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.28);
+}
+/* Lift the real content above the scrim by source order, so neither needs a
+   z-index that would have to be kept in sync with the app view's. */
+.ios-spot-bar,
+.ios-spot-results {
+  position: relative;
+}
+
+.ios-spot-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 10px;
+}
+.ios-spot-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 12px;
+  /* Liquid Glass search field (material from .glass on the element) */
+  --glass-radius: 12px;
+  --glass-blur: 20px;
+  --glass-fill: rgba(255, 255, 255, 0.18);
+  --glass-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  color: rgba(255, 255, 255, 0.75);
+}
+.ios-spot-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  /* 17px is the real iOS search field size, and it has to stay ≥16px: mobile
+     Safari zooms the viewport when focusing a smaller field. */
+  font-size: 17px;
+  color: #fff;
+  caret-color: #fff;
+}
+.ios-spot-field input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+.ios-spot-cancel {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  padding: 0 2px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 16px;
+  color: #fff;
+}
+.ios-spot-cancel:active {
+  opacity: 0.5;
+}
+
+.ios-spot-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 16px calc(var(--home-ind-h) + 8px);
+}
+.ios-spot-section {
+  margin-bottom: 22px;
+}
+.ios-spot-label {
+  margin: 0 2px 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* results card — iOS inset-grouped table */
+.ios-spot-card {
+  overflow: hidden;
+  /* Liquid Glass results card (material from .glass on the element) */
+  --glass-radius: 14px;
+  --glass-blur: 22px;
+  --glass-fill: rgba(255, 255, 255, 0.14);
+  --glass-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+}
+.ios-spot-row {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: #fff;
+}
+/* hairline separators, inset past the icon like a real grouped table */
+.ios-spot-row + .ios-spot-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 62px;
+  right: 0;
+  height: 1px;
+  transform: scaleY(0.5);
+  background: rgba(255, 255, 255, 0.22);
+}
+.ios-spot-row[data-selected="true"],
+.ios-spot-row:active {
+  background: rgba(255, 255, 255, 0.18);
+}
+.ios-spot-row-icon {
+  flex: 0 0 auto;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.2));
+}
+.ios-spot-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.ios-spot-title {
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ios-spot-sub {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Siri Suggestions — shown while the field is empty, as an icon grid */
+.ios-spot-suggest {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  row-gap: 16px;
+  justify-items: center;
+}
+.ios-spot-sugg {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  transition: transform 120ms var(--ease-out), opacity 120ms var(--ease-out);
+}
+.ios-spot-sugg:active {
+  transform: scale(0.9);
+  opacity: 0.75;
+}
+.ios-spot-sugg-icon {
+  display: block;
+  width: 54px;
+  height: 54px;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.22));
+}
+
+.ios-spot-empty {
+  padding-top: 90px;
+  text-align: center;
+  color: #fff;
+}
+.ios-spot-empty-title {
+  font-size: 22px;
+  font-weight: 600;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+.ios-spot-empty-sub {
+  margin-top: 6px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* fullscreen app */
+.ios-appview {
+  position: absolute;
+  inset: 0;
+  background: var(--surface-solid);
+  display: flex;
+  flex-direction: column;
+  z-index: 40;
+  /* Open/close is driven imperatively from IOSShell (origin-zoom out of the
+     tapped icon); see src/shell/originZoom.ts. */
+}
+.ios-navbar {
+  /* iOS 26 nav bar: a translucent Liquid Glass strip that the app content
+     scrolls and frosts behind. It has to OVERLAP the scroll to do that, so it's
+     absolutely positioned and .ios-appscroll carries a matching padding-top.
+     It also needs its OWN translucent tint — iOS's --surface is opaque, so the
+     blur wouldn't read through it. Only the standard backdrop-filter; Lightning
+     CSS autoprefixes (a hand-written -webkit line with var() breaks frosting). */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: calc(var(--statusbar-h) + 4px) 12px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: linear-gradient(180deg, var(--glass-sheen), transparent 80%),
+    rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(22px) saturate(1.7);
+  border-bottom: 0.5px solid var(--border-strong);
+}
+[data-theme="dark"] .ios-navbar {
+  background: linear-gradient(180deg, var(--glass-sheen), transparent 80%),
+    rgba(28, 28, 30, 0.55);
+}
+/* Reduce Transparency: solid bar. --surface is opaque on iOS (and not the
+   hole-punching pure #000 of --surface-solid). (0,2,0) after the dark rule wins
+   for both themes; see glass.css for the rationale. */
+@media (prefers-reduced-transparency: reduce) {
+  [data-os="ios"] .ios-navbar {
+    background: var(--surface);
+    backdrop-filter: none;
+  }
+}
+.ios-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 16px;
+  cursor: pointer;
+  min-width: 64px;
+}
+.ios-navtitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ios-nav-spacer {
+  min-width: 64px;
+}
+.ios-appscroll {
+  flex: 1 1 auto;
+  overflow: auto;
+  /* room for the absolutely-positioned glass nav bar above; content scrolls up
+     under it and frosts. Matches the nav bar's rendered height. */
+  padding-top: calc(var(--statusbar-h) + 38px);
+  background: var(--surface-solid);
+  -webkit-overflow-scrolling: touch;
+}
+.ios-home-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--home-ind-h);
+  border: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 45;
+}
+.ios-home-indicator span {
+  width: 140px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--text);
+  opacity: 0.5;
+}
+
+/* ============================================================
+   Android One UI skin
+   ============================================================ */
+.and-viewport {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  background: #000;
+}
+.and-screen {
+  --and-finder-bg: #0d0d0f;
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  height: 100%;
+  overflow: hidden;
+  background: var(--desktop);
+  font-family: var(--font-ui);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+}
+
+/* status bar */
+.and-statusbar {
+  flex: 0 0 var(--statusbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  z-index: 50;
+}
+.and-statusbar.on-dark {
+  color: #fff;
+}
+.and-sb-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.and-sb-time {
+  letter-spacing: 0.2px;
+}
+.and-sb-notif {
+  opacity: 0.92;
+}
+.and-sb-right {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.and-sb-signal {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1px;
+}
+.and-sb-arrows,
+.and-sb-bars {
+  display: block;
+}
+/* battery percentage pill — filled chip on the dark home, outline over apps */
+.and-sb-batt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  border: 1.4px solid currentColor;
+}
+.and-statusbar.on-dark .and-sb-batt {
+  background: #fff;
+  border-color: #fff;
+  color: #111;
+}
+
+.and-stage {
+  position: relative;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+/* home */
+.and-home {
+  position: absolute;
+  inset: 0;
+  padding: 10px 14px 8px;
+  display: flex;
+  flex-direction: column;
+  transform-origin: center;
+  transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-med) var(--ease-out);
+}
+/* Home recedes and fades as the app's container-transform grows over it. */
+.and-stage:has(.and-appview):not(.closing) .and-home {
+  transform: scale(1.06);
+  opacity: 0;
+}
+
+/* ---- widgets ---- */
+.and-top {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.and-clock-widget {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 188px;
+  border-radius: 38px;
+  padding: 20px 22px;
+  text-align: center;
+  color: #17150f;
+  background: rgba(233, 231, 228, 0.9);
+  backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+}
+.and-clock-date {
+  font-size: 18px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+.and-clock-time {
+  margin-top: 4px;
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+}
+.and-clock-sec {
+  font-weight: 700;
+  opacity: 0.55;
+}
+.and-widget-row {
+  display: grid;
+  grid-template-columns: 1.12fr 1fr;
+  gap: 12px;
+}
+.and-status {
+  display: flex;
+  flex-direction: column;
+  border-radius: 26px;
+  padding: 16px 16px 15px;
+  color: #fff;
+  background: linear-gradient(158deg, #6773c6 0%, #4e5aa8 52%, #3d4a86 100%);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.26);
+}
+.and-status-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.and-status-head {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+}
+.and-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+}
+.and-status-dot.is-open {
+  background: #4ade80;
+  box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.28);
+}
+.and-status-desc {
+  margin-top: 5px;
+  font-size: 12.5px;
+  opacity: 0.95;
+}
+.and-status-graph {
+  position: relative;
+  height: 3px;
+  margin-top: auto;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.24);
+}
+.and-status-graph::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -11px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+.and-status-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 42%;
+  border-radius: 2px;
+  background: #8fd0ff;
+}
+.and-status-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  font-size: 10px;
+  opacity: 0.8;
+}
+.and-status-role {
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.and-widget-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.and-pill {
+  flex: 1 1 0;
+  min-height: 72px;
+  border: 0;
+  border-radius: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1b1a16;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.24);
+}
+.and-pill-greet {
+  font-size: 15px;
+  white-space: nowrap;
+  background: linear-gradient(105deg, #f3ef98 0%, #ddf0a0 55%, #c6edb4 100%);
+}
+.and-pill-start {
+  justify-content: space-between;
+  padding: 0 18px;
+  cursor: pointer;
+  background: rgba(214, 214, 216, 0.94);
+}
+.and-pill-mark {
+  flex: 0 0 auto;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+/* ---- Finder search bar (home, pinned bottom) ---- */
+.and-homesearch {
+  align-self: center;
+  width: min(72%, 360px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px auto 6px;
+  padding: 0 20px;
+  height: 54px;
+  border: 0;
+  border-radius: 27px;
+  background: rgba(70, 70, 74, 0.55);
+  backdrop-filter: blur(20px) saturate(1.25);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: #d6d6db;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.and-homesearch-ic {
+  flex: 0 0 auto;
+  opacity: 0.85;
+}
+/* margin-right:auto pushes the mic to the far edge, so the magnifier + label
+   stay grouped left and there's a wide gap before the mic (One UI 8.5). */
+.and-homesearch-label {
+  flex: 0 0 auto;
+  margin-right: auto;
+  font-size: 16.5px;
+  font-weight: 600;
+  color: #cfcfd5;
+}
+.and-homesearch-mic {
+  flex: 0 0 auto;
+  opacity: 0.85;
+}
+
+.and-spacer {
+  flex: 1 1 auto;
+  min-height: 10px;
+}
+
+/* ---- app row ---- */
+.and-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px 14px;
+  align-content: start;
+}
+.and-app {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+}
+.and-app-icon {
+  display: block;
+  width: 58px;
+  height: 58px;
+  /* icon is a full-bleed gradient squircle now — shadow follows its alpha
+     shape, no container tile needed */
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.28));
+}
+.and-app-label {
+  font-size: 12px;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* ---- dock ---- */
+.and-dock {
+  display: flex;
+  justify-content: space-around;
+  gap: 12px;
+  margin-top: 22px;
+  padding: 4px 6px 6px;
+}
+
+/* app view */
+.and-appview {
+  position: absolute;
+  inset: 0;
+  background: var(--surface-solid);
+  display: flex;
+  flex-direction: column;
+  z-index: 40;
+  /* Open/close is driven imperatively from AndroidShell (One UI container
+     transform out of the tapped icon); see src/shell/originZoom.ts. */
+}
+.and-appbar {
+  flex: 0 0 auto;
+  padding: 8px 8px 0;
+}
+.and-appbar-back {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  border-radius: 50%;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.and-appbar-back:hover {
+  background: var(--surface-hover);
+}
+.and-appscroll {
+  flex: 1 1 auto;
+  overflow: auto;
+  background: var(--surface-solid);
+}
+.and-bigtitle {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 4px 22px 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* nav bar */
+.and-navbar {
+  flex: 0 0 var(--navbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: var(--surface-solid);
+  border-top: 1px solid var(--border);
+  z-index: 60;
+}
+.and-nav-btn {
+  width: 56px;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.and-nav-btn:disabled {
+  opacity: 0.35;
+}
+.and-nav-btn:not(:disabled):hover {
+  background: var(--surface-hover);
+}
+
+/* Over the wallpaper (home + recents) the nav bar is transparent with white
+   icons; over a light surface (app / split / search) it takes the app chrome. */
+.and-navbar {
+  background: transparent;
+  border-top: 0;
+}
+.and-nav-btn {
+  color: #fff;
+}
+.and-screen.mode-app .and-navbar,
+.and-screen.mode-split .and-navbar {
+  background: var(--surface-solid);
+  border-top: 1px solid var(--border);
+}
+.and-screen.mode-app .and-nav-btn,
+.and-screen.mode-split .and-nav-btn {
+  color: var(--text);
+}
+/* status bar strip matches the surface it sits over */
+.and-screen.mode-app .and-statusbar,
+.and-screen.mode-split .and-statusbar {
+  background: var(--surface-solid);
+}
+
+/* Search is One UI's frosted "Finder" surface — the status/nav strips stay
+   transparent so the blurred backdrop shows through them (no opaque black
+   bands breaking the glass), white icons over it. */
+.and-screen.mode-search .and-statusbar,
+.and-screen.mode-search .and-navbar {
+  background: transparent;
+  border-top: 0;
+}
+.and-screen.mode-search .and-nav-btn {
+  color: #fff;
+}
+
+@keyframes andFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---- full-screen search (One UI "Finder") ---- */
+.and-search-screen {
+  /* One UI 8.5 "Frosted Glass": translucent cards over a blurred backdrop of
+     the home screen behind, with a thin light outline on each surface. */
+  --and-finder-card: rgba(255, 255, 255, 0.07);
+  --and-finder-chip: rgba(255, 255, 255, 0.1);
+  --and-finder-text: #f4f4f7;
+  --and-finder-dim: #b6b6bd;
+  position: absolute;
+  inset: 0;
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  background: rgba(14, 14, 17, 0.55);
+  backdrop-filter: blur(34px) saturate(1.3);
+  color: var(--and-finder-text);
+  animation: andFade 150ms ease-out;
+}
+
+/* scrollable content above the pinned bar */
+.and-search-scroll {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 8px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* One UI cards */
+.and-fcard {
+  background: var(--and-finder-card);
+  border: 0;
+  border-radius: 26px;
+  padding: 18px 18px 20px;
+  backdrop-filter: blur(24px) saturate(1.4);
+}
+.and-fcard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.and-fcard-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 2px 14px;
+}
+.and-fcard-head .and-fcard-title {
+  margin-bottom: 0;
+}
+.and-fclear {
+  border: 0;
+  background: transparent;
+  color: var(--and-finder-dim);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px;
+}
+.and-fclear:hover {
+  color: #fff;
+}
+
+/* suggested apps grid */
+.and-fapps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px 6px;
+}
+.and-fapp {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  min-width: 0;
+}
+.and-fapp-icon {
+  display: block;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+}
+.and-fapp-label {
+  max-width: 100%;
+  font-size: 12px;
+  color: var(--and-finder-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* explore + recent chips */
+.and-fchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.and-fchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 15px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--and-finder-chip);
+  backdrop-filter: blur(18px) saturate(1.3);
+  color: var(--and-finder-text);
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.and-fchip:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.and-fchip svg {
+  flex: 0 0 auto;
+  color: var(--and-finder-dim);
+}
+.and-fchip.is-recent {
+  padding: 0 6px 0 15px;
+  gap: 4px;
+}
+.and-frecent-run {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 9px 2px 9px 0;
+}
+.and-frecent-x {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--and-finder-dim);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.and-frecent-x:hover {
+  color: #fff;
+}
+
+/* two quick cards */
+.and-fquick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.and-fquick-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--and-finder-card);
+  backdrop-filter: blur(24px) saturate(1.4);
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.and-fquick-card:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.and-fquick-ic {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
+.and-fquick-ic.is-projects {
+  background: linear-gradient(150deg, #f2a94b, #e07f36);
+}
+.and-fquick-ic.is-contact {
+  background: linear-gradient(150deg, #57b0f2, #3d6ee0);
+}
+
+/* live results */
+.and-search-results {
+  display: flex;
+  flex-direction: column;
+}
+.and-search-empty {
+  color: var(--and-finder-dim);
+  font-size: 14px;
+  text-align: center;
+  padding: 48px 24px;
+}
+.and-search-group {
+  margin-top: 4px;
+}
+.and-search-group-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--and-finder-dim);
+  padding: 10px 8px 4px;
+}
+.and-search-hit {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--and-finder-text);
+  text-align: left;
+  cursor: pointer;
+}
+.and-search-hit:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.and-search-hit-icon {
+  flex: 0 0 auto;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
+}
+.and-search-hit-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.and-search-hit-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+.and-search-hit-sub {
+  font-size: 12.5px;
+  color: var(--and-finder-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* pinned bottom search bar */
+.and-search-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 12px 12px;
+  padding: 0 16px;
+  height: 56px;
+  border: 0;
+  border-radius: 28px;
+  background: var(--and-finder-chip);
+  backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3);
+}
+.and-search-bar-ic {
+  flex: 0 0 auto;
+  color: var(--and-finder-dim);
+}
+.and-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--and-finder-text);
+  font: inherit;
+  font-size: 16px;
+  outline: none;
+}
+.and-search-input::placeholder {
+  color: var(--and-finder-dim);
+}
+/* The blinking caret already signals focus, so suppress the global keyboard
+   focus ring here — it must out-specify the :focus-visible rule in global.css
+   (equal specificity + later source order would otherwise let blue win). */
+.and-search-input:focus,
+.and-search-input:focus-visible {
+  outline: none;
+}
+.and-search-mic,
+.and-search-more {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  color: var(--and-finder-dim);
+}
+.and-search-clear {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--and-finder-dim);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.and-search-clear:hover {
+  color: #fff;
+}
+
+/* ---- recents overview ---- */
+.and-recents {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 0 0;
+  background: rgba(10, 10, 12, 0.5);
+  backdrop-filter: blur(30px) saturate(1.2);
+  animation: andFade 180ms ease-out;
+}
+.and-recents-hint {
+  flex: 0 0 auto;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 16px 12px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.and-recents-empty {
+  margin: auto;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 15px;
+}
+.and-recents-track {
+  flex: 1 1 auto;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 24px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none; /* Firefox — One UI shows no scrollbar in recents */
+}
+.and-recents-track::-webkit-scrollbar {
+  display: none; /* Chromium/WebKit */
+}
+.and-recent-card {
+  flex: 0 0 auto;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  scroll-snap-align: center;
+}
+/* Floating app-icon badge tucked onto the card's top edge (One UI 8.5 centres
+   the icon over the card); tapping it starts a split-screen pairing. */
+.and-recent-badge-btn {
+  position: relative;
+  z-index: 2;
+  margin-bottom: -22px;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  filter: drop-shadow(0 5px 12px rgba(0, 0, 0, 0.55));
+}
+.and-recent-badge-btn:disabled {
+  cursor: default;
+}
+.and-recent-preview {
+  position: relative;
+  width: 220px;
+  height: 424px;
+  border: 0;
+  padding: 0;
+  border-radius: 26px;
+  overflow: hidden;
+  background: var(--surface-solid);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+.and-recent-card.is-top .and-recent-preview {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Transparent click surface over the (inert) live preview. Sits above the app
+   content but below the floating icon badge (z-index 2), so tapping the icon
+   still starts split while tapping the card body opens it. */
+.and-recent-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.and-recent-scale {
+  width: 460px; /* full phone content width */
+  transform: scale(0.478); /* 220 / 460 */
+  transform-origin: top left;
+  pointer-events: none;
+}
+.and-recent-scale-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 22px 6px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+}
+.and-recent-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 3px 9px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.and-recents-closeall {
+  flex: 0 0 auto;
+  margin-top: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 22px;
+  padding: 10px 34px;
+  background: transparent;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.and-recents-closeall:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Suggested-apps dock pinned at the very bottom of the overview. */
+.and-recents-dock {
+  flex: 0 0 auto;
+  align-self: stretch;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  align-items: center;
+  justify-items: center;
+  padding: 18px 14px 14px;
+}
+.and-recents-dock-app {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.4));
+}
+
+/* ---- split screen ---- */
+.and-split {
+  position: absolute;
+  inset: 0;
+  z-index: 42;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  animation: andFade 180ms ease-out;
+}
+.and-split-pane {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface-solid);
+}
+.and-split-pane:first-child {
+  border-radius: 0 0 18px 18px;
+}
+.and-split-pane:last-child {
+  border-radius: 18px 18px 0 0;
+}
+.and-split-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.and-split-bar-title {
+  flex: 1 1 auto;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.and-split-expand {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.and-split-expand:hover {
+  background: var(--surface-hover);
+}
+.and-split-scroll {
+  flex: 1 1 auto;
+  overflow: auto;
+  background: var(--surface-solid);
+}
+.and-split-h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 18px 4px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+.and-split-divider {
+  flex: 0 0 14px;
+  display: grid;
+  place-items: center;
+  background: #000;
+  cursor: row-resize;
+  touch-action: none;
+}
+.and-split-grip {
+  width: 44px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+/* ---------- start menu (Windows 11: centred, search, pinned, recommended) ---------- */
+.start-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-overlay);
+}
+.start-menu {
+  position: absolute;
+  bottom: calc(var(--taskbar-h) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 24px));
+  height: min(660px, calc(100vh - var(--taskbar-h) - 32px));
+  max-height: calc(100vh - var(--taskbar-h) - 32px);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0 0;
+  background: var(--flyout-bg);
+  backdrop-filter: blur(40px) saturate(1.6);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-window);
+  color: var(--text);
+  z-index: calc(var(--z-overlay) + 1);
+  animation: startIn var(--dur-med) var(--ease-out);
+  overflow: hidden;
+}
+@keyframes startIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 14px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+.start-search {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 30px 20px;
+  padding: 0 14px;
+  height: 34px;
+  border-radius: 17px;
+  background: var(--search-bg);
+  border: 1px solid var(--border);
+  border-bottom-color: var(--border-strong);
+  color: var(--text-faint);
+  min-width: 0;
+}
+/* Pinned / Recommended / All scroll as one surface between search and footer */
+.start-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 0 28px 12px;
+}
+.start-search input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+.start-search input::placeholder {
+  color: var(--text-faint);
+}
+.start-row {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 28px 10px;
+}
+.start-row-reco,
+.start-row-all {
+  margin-top: 18px;
+}
+.start-section {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+.start-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+.start-pill:hover {
+  background: var(--surface-hover);
+}
+.start-pill[aria-expanded="true"] .start-pill-chev {
+  transform: rotate(90deg);
+}
+.start-pill-chev {
+  transition: transform var(--dur-fast);
+}
+
+/* "View: Category" switch on the All header */
+.start-view {
+  position: relative;
+}
+.start-view-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+.start-view-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 2;
+  min-width: 132px;
+  padding: 4px;
+  background: var(--flyout-bg);
+  backdrop-filter: blur(30px) saturate(1.5);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-window);
+}
+.start-view-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.start-view-item:hover {
+  background: var(--surface-hover);
+}
+.start-view-item[aria-checked="true"] {
+  background: var(--surface-active);
+}
+.start-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px 0;
+}
+.start-app {
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  padding: 9px 2px 7px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--text);
+  transition: background var(--dur-fast);
+  min-width: 0;
+}
+.start-app:hover {
+  background: var(--surface-hover);
+}
+.start-app-icon {
+  display: block;
+}
+.start-app-label {
+  font-size: var(--text-xs);
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* all → category view: each card previews up to four of its app icons */
+.start-cats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 8px;
+  padding-bottom: 8px;
+}
+.start-cat {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.start-cat-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 1fr;
+  place-items: center;
+  gap: 8px;
+  padding: 13px;
+  min-height: 92px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  transition: background var(--dur-fast);
+}
+.start-cat:hover .start-cat-tiles {
+  background: var(--surface-hover);
+}
+.start-cat-name {
+  font-size: var(--text-xs);
+  text-align: center;
+}
+.start-empty {
+  padding: 24px 6px;
+  color: var(--text-faint);
+  font-size: var(--text-sm);
+}
+
+/* ---------- start search results ---------- */
+.start-results {
+  padding-bottom: 8px;
+}
+.start-row-group {
+  margin-top: 14px;
+}
+.start-hit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+.start-hit[data-selected="true"] {
+  background: var(--surface-active);
+}
+/* Win11 gives the best match a taller, card-like row */
+.start-list-best .start-hit {
+  padding: 12px 10px;
+}
+.start-hit-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.start-hit-title {
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.start-hit-sub {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* recommended */
+/* inset so the item icons line up with the pinned grid's icons above them */
+.start-reco {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 8px;
+  padding: 0 18px 8px;
+}
+.start-reco-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: var(--text);
+  text-align: left;
+  transition: background var(--dur-fast);
+  min-width: 0;
+}
+.start-reco-item:hover {
+  background: var(--surface-hover);
+}
+.start-reco-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.start-reco-title {
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.start-reco-note {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+}
+
+/* all-apps list */
+.start-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 8px;
+}
+.start-list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  padding: 7px 10px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: var(--text-sm);
+  text-align: left;
+  transition: background var(--dur-fast);
+}
+.start-list-item:hover {
+  background: var(--surface-hover);
+}
+
+/* footer strip */
+.start-footer {
+  flex: 0 0 auto;
+  padding: 8px 36px;
+  display: flex;
+  align-items: center;
+  background: var(--flyout-footer);
+  border-top: 1px solid var(--border);
+}
+.start-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  transition: background var(--dur-fast);
+}
+.start-user:hover {
+  background: var(--surface-hover);
+}
+.start-avatar,
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}

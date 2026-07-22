@@ -1,0 +1,108 @@
+/* ============================================================
+   LIQUID GLASS  —  Apple's material, iOS 26 / macOS Tahoe 26
+   ------------------------------------------------------------
+   Shared by the macOS + iOS skins only. Two layers:
+
+   `.glass`          the base material — translucent fill, backdrop
+                     blur + saturation + luminance, a top specular
+                     sheen, a bright hairline rim, an ambient shadow,
+                     and large concentric corners. This alone reads as
+                     Liquid Glass on any device.
+
+   `.glass--refract` adds real edge lensing: it routes the backdrop
+                     through the #liquid-glass SVG displacement filter
+                     so content behind the panel bends at the rim, the
+                     way real glass refracts. It DEGRADES SAFELY — the
+                     url() value is invalid wherever it isn't supported
+                     (Firefox, most Safari) so the element simply keeps
+                     the `.glass` material; reduced-motion drops it too.
+
+   Tunables are CSS vars so each surface (dock, menu bar, sheet, tab
+   bar…) can set its own blur / radius / tint without new rules.
+   ============================================================ */
+
+:root {
+  --glass-blur: 20px;
+  --glass-sat: 1.8;
+  --glass-radius: 22px;
+  --glass-refract: 14; /* SVG displacement strength, px */
+
+  /* light material */
+  --glass-fill: rgba(255, 255, 255, 0.42);
+  --glass-bright: 1.08;
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-sheen: rgba(255, 255, 255, 0.28); /* top gloss */
+  --glass-hi: rgba(255, 255, 255, 0.65); /* crisp top rim */
+  --glass-lo: rgba(255, 255, 255, 0.1); /* inner fill lift */
+  --glass-depth: rgba(0, 0, 0, 0.22); /* bottom depth */
+  --glass-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+}
+
+[data-theme="dark"] {
+  --glass-fill: rgba(40, 42, 48, 0.46);
+  --glass-bright: 1;
+  --glass-border: rgba(255, 255, 255, 0.16);
+  --glass-sheen: rgba(255, 255, 255, 0.12);
+  --glass-hi: rgba(255, 255, 255, 0.22);
+  --glass-lo: rgba(255, 255, 255, 0.04);
+  --glass-depth: rgba(0, 0, 0, 0.35);
+  --glass-shadow: 0 14px 44px rgba(0, 0, 0, 0.52);
+}
+
+.glass {
+  position: relative;
+  /* top sheen laid over the translucent tint */
+  background: linear-gradient(180deg, var(--glass-sheen), transparent 42%),
+    var(--glass-fill);
+  /* Only the standard property — the bundler (Lightning CSS) autoprefixes.
+     Hand-writing both `backdrop-filter` and `-webkit-backdrop-filter` with
+     var() values made Lightning drop the UNPREFIXED one, leaving a -webkit
+     rule Chromium won't apply — so nothing frosted. Do not re-add the manual
+     -webkit line here. */
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat))
+    brightness(var(--glass-bright));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  box-shadow: var(--glass-shadow),
+    inset 0 1px 0 0 var(--glass-hi),
+    inset 0 0 0 1px var(--glass-lo),
+    inset 0 -10px 22px -12px var(--glass-depth);
+}
+
+/* Edge refraction — DELIBERATELY NOT via `backdrop-filter: url(#liquid-glass)`.
+   Chromium renders an SVG filter in backdrop-filter as EMPTY until something
+   forces a repaint, which silently kills the blur: static panels (the dock)
+   stay see-through forever, and Spotlight only frosts once you type. Frosting
+   legibility is non-negotiable, so `.glass--refract` keeps the same reliable
+   blur as `.glass` and the "liquid" read comes from the material + specular
+   edges instead. Kept as a distinct class so the refractive surfaces are
+   marked if we later add a repaint-safe technique. */
+.glass--refract {
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat))
+    brightness(var(--glass-bright));
+}
+
+/* Apple's "Reduce Transparency" (Accessibility) — mirror the OS: the material
+   goes solid. Translucency and the backdrop blur drop; the rim and shadow stay,
+   exactly as iOS/macOS render it. It's also a free perf win — users who turn it
+   on are often on constrained hardware, and every Liquid Glass surface stops
+   sampling the backdrop, the costliest thing it does.
+
+   The solid token differs per OS: iOS's --surface is already opaque, and using
+   it avoids --surface-solid's pure #000 in dark (which would punch a hole in the
+   wallpaper); macOS's opaque material is --surface-solid. Per-OS selectors are
+   (0,2,0), so they override .glass's own (0,1,0) fill without !important. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass--refract {
+    backdrop-filter: none;
+  }
+  [data-os="ios"] .glass,
+  [data-os="ios"] .glass--refract {
+    background: var(--surface);
+  }
+  [data-os="macos"] .glass,
+  [data-os="macos"] .glass--refract {
+    background: var(--surface-solid);
+  }
+}

@@ -1,0 +1,83 @@
+@import "tailwindcss";
+@import "./fonts.css";
+@import "./tokens.css";
+@import "./glass.css";
+@import "./shell.css";
+@import "./apps.css";
+
+/* ============================================================
+   Design tokens — fleshed out in Phase 1. Baseline only here.
+   ============================================================ */
+@theme {
+  /* System font stacks give free native rendering per-OS. */
+  --font-system: system-ui, -apple-system, "Segoe UI Variable", "Segoe UI",
+    "Inter", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Cascadia Mono", Menlo, Consolas,
+    "Roboto Mono", monospace;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+/* Neutral system-adaptive backdrop for the brief moment between the fallback
+   being hidden and the client-only shell painting — avoids a white flash. */
+html {
+  background: Canvas;
+}
+
+body {
+  font-family: var(--font-system);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ============================================================
+   Scrollbars — one thin, trackless bar everywhere: no arrows, no
+   groove, just a thumb that floats over the content.
+
+   Both syntaxes are here, but no browser ever applies both: Chrome,
+   Edge and Firefox take the standard properties, and setting
+   `scrollbar-width` makes them ignore the ::-webkit- pseudo-elements
+   outright — which leaves those free to serve older WebKit
+   (Safari < 18) without any risk of the two fighting.
+   ============================================================ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scroll-thumb-hover);
+}
+
+/* Visible focus ring for keyboard users (mouse clicks stay ring-free). */
+:focus-visible {
+  outline: 2px solid var(--accent, #005fb8);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Respect users who prefer less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

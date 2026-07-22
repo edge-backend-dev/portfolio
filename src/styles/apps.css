@@ -1,0 +1,1258 @@
+/* ============================================================
+   APP CONTENT — shared across every OS skin. Styled with tokens
+   so the same markup looks native in each shell.
+   ============================================================ */
+
+.app {
+  padding: 20px 22px 26px;
+  color: var(--text);
+  font-size: var(--text-base);
+  line-height: 1.55;
+  /* Shared corner language, flavoured per skin (crisp on Windows, round on
+     mobile). Defined here so every app page — not just Contact — uses it. */
+  --card-radius: clamp(10px, calc(var(--ctrl-radius, 8px) * 1.6), 18px);
+  --field-radius: clamp(7px, var(--ctrl-radius, 8px), 12px);
+}
+
+.app-title {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.app-role {
+  margin: 2px 0 0;
+  color: var(--accent);
+  font-weight: 600;
+}
+.app-tagline {
+  margin: 10px 0 14px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+.app-para {
+  margin: 0 0 12px;
+}
+.app-faint {
+  color: var(--text-faint);
+  font-size: var(--text-sm);
+}
+.section-h {
+  font-size: var(--text-md);
+  font-weight: 650;
+  margin: 22px 0 12px;
+}
+
+/* buttons */
+.btn-accent,
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: var(--ctrl-radius, 8px);
+  font-size: var(--text-base);
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+}
+.btn-accent {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.btn-accent:hover {
+  background: var(--accent-hover);
+}
+.btn-accent:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.btn-ghost:hover {
+  background: var(--surface-hover);
+}
+.btn-accent.sm,
+.btn-ghost.sm {
+  padding: 6px 12px;
+  font-size: var(--text-sm);
+}
+.app-cta-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+/* about — identity header (text + portrait) above a full-width bio */
+.about {
+  container-type: inline-size;
+}
+.about-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+/* identity text column — grows to fill and keeps the portrait to its right
+   until the window is genuinely tight, at which point the portrait wraps below */
+.about-id {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.about-name {
+  margin: 0;
+  font-size: clamp(1.3rem, 3.2cqi, 1.6rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.about-role {
+  margin: 3px 0 0;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+/* the CTA row sits inside the identity column; drop its default top gap */
+.about-id .app-cta-row {
+  margin-top: 2px;
+}
+/* portrait card — the headshot, sized off the container so it scales with the
+   window; falls back to an accent initials tile if the image fails to load */
+.about-portrait {
+  flex: 0 0 auto;
+  width: clamp(116px, 30cqi, 188px);
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: calc(var(--card-radius) + 4px);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-solid);
+  box-shadow: 0 14px 32px -16px rgba(0, 0, 0, 0.55);
+}
+.about-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* profile.jpg is already cropped to 4:5 on the face, matching the card; this
+     just keeps it framed if the card aspect is ever changed */
+  object-position: 50% 30%;
+}
+.about-photo--fallback {
+  display: grid;
+  place-items: center;
+  /* same accent sheen the old "OD" tile used, scaled up to fill the card */
+  background: linear-gradient(150deg, color-mix(in srgb, var(--accent) 82%, #fff), var(--accent));
+  color: var(--accent-text);
+  font-size: clamp(30px, 9cqi, 48px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.about-body {
+  margin-top: 22px;
+  min-width: 0;
+  max-width: 68ch;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.about-lede {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--text-dim);
+  line-height: 1.55;
+  font-weight: 500;
+}
+.about-body .app-para {
+  margin: 0;
+}
+
+/* link chips */
+.link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.link-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  transition: background var(--dur-fast);
+}
+.link-chip:hover {
+  background: var(--surface-hover);
+}
+.link-chip.solo {
+  margin-top: 16px;
+}
+
+/* resume */
+.resume-top {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.timeline-item {
+  padding: 0 0 4px 14px;
+  border-left: 2px solid var(--border-strong);
+  margin-bottom: 18px;
+}
+.timeline-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.timeline-head .period {
+  color: var(--text-faint);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+.org {
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+  margin: 2px 0 6px;
+}
+.bullets {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.bullets li {
+  margin-bottom: 5px;
+}
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.tag {
+  font-size: var(--text-xs);
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+/* ---------- shared page header (Services / About / Projects) ----------
+   Same headline treatment as the Contact aside: no display face, carried by
+   weight and tight tracking so it stays native in every skin. */
+.page-head {
+  margin: 2px 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.page-headline {
+  margin: 0;
+  font-size: clamp(1.4rem, 3.6cqi, 1.9rem);
+  font-weight: 700;
+  line-height: 1.14;
+  letter-spacing: -0.026em;
+}
+.page-headline em {
+  font-style: normal;
+  color: var(--text-dim);
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 4px;
+}
+.page-lede {
+  margin: 0;
+  max-width: 56ch;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+/* services */
+.services {
+  container-type: inline-size;
+}
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+  gap: 14px;
+}
+.service-card {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  border-radius: var(--card-radius);
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.18), 0 2px 5px rgba(0, 0, 0, 0.04);
+  transition: transform var(--dur-med), box-shadow var(--dur-med), border-color var(--dur-med);
+}
+.service-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: 0 16px 38px -14px rgba(0, 0, 0, 0.26), 0 3px 8px rgba(0, 0, 0, 0.06);
+}
+[data-theme="dark"] .service-card {
+  box-shadow: 0 16px 34px -16px rgba(0, 0, 0, 0.6);
+}
+.service-icon {
+  display: block;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.16));
+}
+.service-title {
+  margin: 13px 0 5px;
+  font-size: var(--text-md);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.service-pitch {
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+  margin: 0 0 15px;
+  line-height: 1.55;
+}
+/* feature list — accent check per line, pushed to the card's bottom so cards
+   with different pitch lengths keep their lists aligned. */
+.feature-list {
+  list-style: none;
+  margin: auto 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.feature-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: var(--text-sm);
+  color: var(--text-dim);
+  line-height: 1.45;
+}
+.feature-list svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .service-card {
+    transition: none;
+  }
+  .service-card:hover {
+    transform: none;
+  }
+}
+
+/* skills */
+.skill-group {
+  margin-bottom: 16px;
+}
+.skill-cat {
+  font-size: var(--text-sm);
+  color: var(--text-dim);
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chip {
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+
+/* projects */
+.empty-note {
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.empty-note p {
+  margin: 8px 0 0;
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+}
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+}
+.project-card {
+  position: relative;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  min-height: 120px;
+}
+.project-card.locked {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+.lock-badge {
+  font-size: 18px;
+}
+.skeleton-title,
+.skeleton-line {
+  height: 10px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--surface-hover), var(--surface-active), var(--surface-hover));
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite;
+}
+.skeleton-title {
+  width: 60%;
+  height: 14px;
+}
+.skeleton-line {
+  width: 100%;
+}
+.skeleton-line.short {
+  width: 70%;
+}
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+.soon-tag {
+  margin-top: auto;
+  align-self: flex-start;
+  font-size: var(--text-xs);
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--text);
+}
+.project-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.project-head h3 {
+  margin: 0;
+  font-size: var(--text-md);
+}
+.project-summary {
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+  margin: 8px 0 0;
+}
+.status-tag {
+  font-size: var(--text-xs);
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: capitalize;
+  background: var(--surface-hover);
+}
+.status-tag.live {
+  background: color-mix(in srgb, #22c55e 20%, transparent);
+}
+
+/* terminal */
+.app.terminal {
+  padding: 0;
+  height: 100%;
+  background: #0c0c0c;
+  color: #e6e6e6;
+  font-family: var(--font-mono);
+}
+.term-body {
+  height: 100%;
+  overflow: auto;
+  padding: 14px 16px;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+.term-prompt {
+  color: #4cc2ff;
+  font-weight: 600;
+}
+.term-line {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.term-out {
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #cfcfcf;
+}
+.term-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.term-input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: #e6e6e6;
+  font: inherit;
+}
+/* Caret signals focus — beat global.css :focus-visible so typing stays
+   ring-free (plain `outline: none` ties on specificity and loses on order). */
+.term-input:focus,
+.term-input:focus-visible {
+  outline: none;
+}
+
+/* ============================================================
+   CONTACT — two-column "hub" layout. The columns collapse on a
+   CONTAINER query, not a viewport one, so the same markup works
+   in a resized desktop window and on a phone skin alike.
+   ============================================================ */
+.contact-hub {
+  /* corner tokens (--card-radius / --field-radius) come from .app */
+  container-type: inline-size;
+}
+
+.contact-grid {
+  display: grid;
+  gap: 26px;
+  align-items: start;
+}
+@container (min-width: 720px) {
+  .contact-grid {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 34px;
+  }
+}
+
+/* ---------- left column ---------- */
+.contact-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  min-width: 0;
+}
+.contact-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.avail-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.avail-pill .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: avail-pulse 2.4s var(--ease-out) infinite;
+}
+@keyframes avail-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 color-mix(in srgb, #22c55e 55%, transparent); }
+  50% { opacity: 0.7; box-shadow: 0 0 0 4px color-mix(in srgb, #22c55e 0%, transparent); }
+}
+
+/* No display face here on purpose — the skins use their native system font,
+   so the headline leans on weight and tight tracking instead. */
+.contact-headline {
+  margin: 0;
+  font-size: clamp(1.55rem, 4.2cqi, 2.15rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.028em;
+}
+.contact-headline em {
+  font-style: normal;
+  color: var(--text-dim);
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 4px;
+}
+.contact-lede {
+  margin: 0;
+  max-width: 42ch;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+/* fact rows */
+.contact-facts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.contact-facts li {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 9px 10px;
+  border-radius: var(--field-radius);
+  border: 1px solid transparent;
+  transition: background var(--dur-med), border-color var(--dur-med);
+}
+.contact-facts li:hover {
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+.fact-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: calc(var(--field-radius) - 1px);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.contact-facts h4 {
+  margin: 0 0 1px;
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.contact-facts p,
+.contact-facts a {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.contact-facts a:hover {
+  text-decoration: underline;
+}
+
+/* social tiles */
+.contact-socials h4 {
+  margin: 0 0 10px;
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.social-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+.social-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 9px 11px;
+  border-radius: var(--field-radius);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color var(--dur-fast), background var(--dur-fast), border-color var(--dur-fast);
+}
+.social-tile svg {
+  flex: 0 0 auto;
+}
+.social-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.social-text strong {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+.social-text small {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.social-tile:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+.social-tile.s-linkedin:hover { color: #0a66c2; }
+.social-tile.s-x:hover { color: var(--text); }
+.social-tile.s-website:hover { color: #10b981; }
+[data-theme="dark"] .social-tile.s-linkedin:hover { color: #4aa3ff; }
+
+/* ---------- right column: the form card ---------- */
+.contact-card {
+  min-width: 0;
+  padding: 22px 22px 24px;
+  border-radius: var(--card-radius);
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+[data-theme="dark"] .contact-card {
+  box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.65);
+}
+@container (min-width: 720px) {
+  .contact-card {
+    padding: 28px;
+  }
+}
+.card-head {
+  margin-bottom: 18px;
+}
+.card-head h3 {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.card-head p {
+  margin: 4px 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-faint);
+}
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.field-row {
+  display: grid;
+  gap: 15px;
+}
+@container (min-width: 520px) {
+  .field-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.field b {
+  color: #ef4444;
+  font-weight: 600;
+}
+.field i {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--text-faint);
+}
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.char-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-faint);
+  transition: color var(--dur-fast);
+}
+.char-count.ok {
+  color: #10b981;
+}
+
+.field input,
+.field textarea,
+.field select {
+  font: inherit;
+  font-size: var(--text-base);
+  font-weight: 400;
+  color: var(--text);
+  padding: 10px 13px;
+  border-radius: var(--field-radius);
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  outline: none;
+  width: 100%;
+  min-width: 0;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.field textarea {
+  padding: 11px 13px;
+  line-height: 1.55;
+  resize: vertical;
+  min-height: 108px;
+}
+.field ::placeholder {
+  color: var(--text-faint);
+}
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.field input:disabled,
+.field textarea:disabled,
+.field select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---------- inquiry-type listbox ----------
+   Built from markup rather than a native <select> so the open list obeys the
+   active skin instead of the visitor's real OS. See CategorySelect in
+   Contact.tsx. Trigger is sized to match .field input exactly. */
+.select-wrap {
+  position: relative;
+  display: block;
+}
+.select-trigger {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  font: inherit;
+  font-size: var(--text-base);
+  font-weight: 400;
+  color: var(--text);
+  text-align: left;
+  padding: 10px 11px 10px 12px;
+  border-radius: var(--field-radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-solid);
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.select-trigger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border-strong));
+}
+.select-trigger:focus-visible,
+.select-wrap.is-open .select-trigger {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.select-trigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.select-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.select-icon,
+.select-chevron {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--text-faint);
+}
+.select-wrap.is-open .select-icon {
+  color: var(--accent);
+}
+.select-chevron {
+  transition: rotate var(--dur-fast) var(--ease-out);
+}
+.select-wrap.is-open .select-chevron {
+  rotate: 180deg;
+}
+
+.select-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 5px;
+  list-style: none;
+  border-radius: var(--card-radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-solid);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.08);
+  outline: none;
+  animation: select-drop var(--dur-fast) var(--ease-out) both;
+}
+[data-theme="dark"] .select-panel {
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+}
+.select-panel.drop-up {
+  top: auto;
+  bottom: calc(100% + 6px);
+  transform-origin: bottom center;
+}
+@keyframes select-drop {
+  from { opacity: 0; translate: 0 -4px; scale: 0.985; }
+}
+
+.select-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: calc(var(--field-radius) - 2px);
+  font-size: var(--text-base);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.select-option svg {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+}
+.select-option span {
+  flex: 1;
+  min-width: 0;
+}
+/* highlight follows the pointer AND the arrow keys — one class, both inputs */
+.select-option.is-active {
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  color: var(--text);
+}
+.select-option.is-active svg {
+  color: var(--accent);
+}
+.select-option.is-selected {
+  font-weight: 600;
+  color: var(--text);
+}
+.option-check {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+.option-check svg {
+  color: inherit;
+}
+
+.form-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 11px 13px;
+  border-radius: var(--field-radius);
+  border: 1px solid color-mix(in srgb, #ef4444 32%, transparent);
+  background: color-mix(in srgb, #ef4444 9%, transparent);
+  color: #dc2626;
+  font-size: var(--text-sm);
+}
+[data-theme="dark"] .form-error {
+  color: #f87171;
+}
+.form-error svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.send-btn {
+  justify-content: center;
+  width: 100%;
+  padding: 11px 18px;
+  border-radius: var(--field-radius);
+}
+.send-btn.is-sending svg {
+  animation: send-spin 0.9s linear infinite;
+}
+@keyframes send-spin {
+  to { rotate: 360deg; }
+}
+
+/* ---------- success state ---------- */
+.contact-sent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 30px 8px 26px;
+  text-align: center;
+  animation: sent-in var(--dur-slow) var(--ease-out) both;
+}
+@keyframes sent-in {
+  from { opacity: 0; scale: 0.96; }
+}
+.sent-mark {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  color: #10b981;
+  background: color-mix(in srgb, #10b981 15%, transparent);
+}
+.contact-sent h3 {
+  margin: 0 0 6px;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.contact-sent p {
+  margin: 0;
+  max-width: 40ch;
+  font-size: var(--text-sm);
+  color: var(--text-faint);
+  line-height: 1.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avail-pill .dot,
+  .send-btn.is-sending svg,
+  .contact-sent,
+  .select-panel {
+    animation: none;
+  }
+  .select-chevron {
+    transition: none;
+  }
+}
+
+/* settings */
+.setting-block {
+  margin-bottom: 22px;
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.setting-label {
+  font-weight: 600;
+}
+.setting-hint {
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+  margin: 2px 0 0;
+}
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.seg {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 7px 16px;
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+.seg.active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.wp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.wp-thumb {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: 10px;
+  border: 2px solid var(--border-strong);
+  background: var(--surface-2) center / cover no-repeat;
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  transition: border-color var(--dur-fast), transform var(--dur-fast);
+}
+.wp-thumb:hover {
+  transform: translateY(-1px);
+}
+.wp-thumb.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.wp-thumb-auto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--text-dim);
+  background: linear-gradient(135deg, var(--surface-2), var(--surface-hover));
+}
+.wp-thumb-auto-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.wp-thumb-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.os-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.os-option {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  font-size: var(--text-base);
+  font-weight: 500;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.os-option:hover {
+  background: var(--surface-hover);
+}
+.os-option.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* ============================================================
+   FINDER — macOS file browser, reimagined as the portfolio's home
+   base. Only ever rendered inside a macOS window, so its tokens
+   resolve to the mac palette. Fills the window (no `.app` padding):
+   a Favourites sidebar + an Applications grid that open the apps.
+   ============================================================ */
+.finder-app {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  color: var(--text);
+}
+.finder-sidebar {
+  flex: 0 0 172px;
+  overflow-y: auto;
+  padding: 12px 10px;
+  background: rgba(0, 0, 0, 0.035);
+  border-right: 1px solid var(--border);
+}
+[data-theme="dark"] .finder-sidebar {
+  background: rgba(255, 255, 255, 0.04);
+}
+.finder-sb-label {
+  margin: 2px 8px 6px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-faint);
+}
+.finder-sb-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+.finder-sb-item:hover {
+  background: var(--surface-hover);
+}
+.finder-sb-icon {
+  flex: 0 0 auto;
+}
+.finder-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.finder-crumb {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+}
+.finder-grid {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  align-content: start;
+  gap: 6px;
+  padding: 16px;
+}
+.finder-file {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 6px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+.finder-file:hover {
+  background: var(--surface-hover);
+}
+.finder-file-icon {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.18));
+}
+.finder-file-name {
+  font-size: var(--text-sm);
+  line-height: 1.2;
+  text-align: center;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}

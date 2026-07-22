@@ -1,0 +1,35 @@
+/* ============================================================
+   SELF-HOSTED FALLBACK FONT — Inter (variable)
+
+   The four skins name their real OS font FIRST (Segoe UI Variable,
+   SF Pro, Samsung/One UI Sans). Those are proprietary and can't be
+   redistributed, but they render for free when the visitor is already
+   on that OS — which, for an OS-mimic, is the common case.
+
+   For everyone else, Inter is the "closer-look" fallback: a neutral
+   humanist sans that sits close to both SF Pro and Segoe, so a
+   cross-platform viewer sees something near the native face instead
+   of dropping to their own system font. One variable file per style
+   covers every weight (100–900).
+
+   Not preloaded on purpose: native-OS visitors never use it, so it
+   lazy-loads (font-display: swap) only when a skin actually falls
+   through to it. Latin-only files; non-latin glyphs fall through the
+   stack as normal.
+   ============================================================ */
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-latin-wght-italic.woff2") format("woff2");
+}

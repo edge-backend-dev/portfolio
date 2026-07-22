@@ -1,0 +1,328 @@
+/* ============================================================
+   DESIGN TOKENS
+   Global scale is OS-agnostic. Per-OS tokens are scoped by a
+   [data-os="…"] attribute set on the shell root, so one markup
+   tree can render as Windows, macOS, iOS, or Android.
+   Theme (light/dark) is scoped by [data-theme="…"].
+   ============================================================ */
+
+:root {
+  /* motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-med: 220ms;
+  --dur-slow: 360ms;
+
+  /* z-index scale */
+  --z-wallpaper: 0;
+  --z-window: 100;
+  --z-window-focused: 200;
+  --z-chrome: 900; /* taskbar / dock / menubar / status bar */
+  --z-overlay: 1000; /* launchers, menus */
+
+  /* type scale (rem) */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+
+  /* scrollbars — one thumb colour for every skin, since a thin trackless bar
+     reads the same on all four. Light default; the dark shell overrides it. */
+  --scroll-thumb: rgba(0, 0, 0, 0.24);
+  --scroll-thumb-hover: rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] {
+  --scroll-thumb: rgba(255, 255, 255, 0.2);
+  --scroll-thumb-hover: rgba(255, 255, 255, 0.36);
+}
+
+/* ============================================================
+   Android (One UI) — light
+   ============================================================ */
+[data-os="android"] {
+  /* One UI Sans / Samsung Sans render on Samsung devices; Roboto is the
+     real Android default and closest elsewhere; Inter is the web fallback. */
+  --font-ui: "One UI Sans", "Samsung Sans", "SamsungOne", Roboto,
+    "Google Sans", "Inter", system-ui, -apple-system, sans-serif;
+
+  --accent: #0072de;
+  --accent-hover: #1a84f0;
+  --accent-text: #ffffff;
+
+  /* One UI dark home wallpaper: near-black with a soft warm vignette glow.
+     The launcher chrome (white icons/text) is designed to sit over this in
+     both light and dark UI themes, the way a phone wallpaper is independent
+     of the system theme. */
+  --desktop: radial-gradient(125% 90% at 50% 40%, #3a332e 0%, #241f1c 38%, #14100e 68%, #0a0807 100%);
+
+  --surface: #ffffff;
+  --surface-solid: #ffffff;
+  --surface-2: #f0f3f8;
+  --surface-hover: rgba(0, 0, 0, 0.05);
+  --surface-active: rgba(0, 0, 0, 0.08);
+
+  --text: #1b1b1f;
+  --text-dim: #44474e;
+  --text-faint: #74777f;
+
+  --border: rgba(0, 0, 0, 0.07);
+  --border-strong: rgba(0, 0, 0, 0.12);
+
+  --win-radius: 0px;
+  --ctrl-radius: 20px;
+
+  --statusbar-h: 34px;
+  --navbar-h: 44px;
+
+  --shadow-window: none;
+  --blur: 20px;
+}
+
+/* Android — dark */
+[data-os="android"][data-theme="dark"] {
+  --accent: #4aa0ff;
+  --accent-hover: #6fb4ff;
+  --accent-text: #002744;
+
+  --desktop: radial-gradient(125% 90% at 50% 40%, #3a332e 0%, #241f1c 38%, #14100e 68%, #0a0807 100%);
+
+  --surface: #1c1e22;
+  --surface-solid: #121316;
+  --surface-2: #26282e;
+  --surface-hover: rgba(255, 255, 255, 0.07);
+  --surface-active: rgba(255, 255, 255, 0.1);
+
+  --text: #e4e2e6;
+  --text-dim: #c4c6d0;
+  --text-faint: #8e9099;
+
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.14);
+}
+
+/* ============================================================
+   iOS — light
+   ============================================================ */
+[data-os="ios"] {
+  /* SF Pro comes via -apple-system on Apple devices; Inter is the web fallback. */
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Inter", system-ui, sans-serif;
+
+  --accent: #007aff;
+  --accent-hover: #0a84ff;
+  --accent-text: #ffffff;
+
+  --desktop: url("/wallpapers/ios16.svg") center / cover no-repeat;
+
+  --surface: #ffffff;
+  --surface-solid: #ffffff;
+  --surface-2: #f2f2f7;
+  --surface-hover: rgba(0, 0, 0, 0.05);
+  --surface-active: rgba(0, 0, 0, 0.09);
+
+  --text: #000000;
+  --text-dim: #3c3c43;
+  --text-faint: #8e8e93;
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(60, 60, 67, 0.18);
+
+  --win-radius: 0px;
+  --ctrl-radius: 12px;
+
+  --statusbar-h: 44px;
+  --home-ind-h: 30px;
+
+  --shadow-window: none;
+  --blur: 20px;
+}
+
+/* iOS — dark */
+[data-os="ios"][data-theme="dark"] {
+  --accent: #0a84ff;
+  --accent-hover: #409cff;
+
+  /* Same wallpaper — iOS dims it for dark mode rather than swapping it. */
+  --desktop: linear-gradient(rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.42)),
+    url("/wallpapers/ios16.svg") center / cover no-repeat;
+
+  --surface: #1c1c1e;
+  --surface-solid: #000000;
+  --surface-2: #1c1c1e;
+  --surface-hover: rgba(255, 255, 255, 0.08);
+  --surface-active: rgba(255, 255, 255, 0.12);
+
+  --text: #ffffff;
+  --text-dim: #ebebf5;
+  --text-faint: #8e8e93;
+
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(235, 235, 245, 0.2);
+}
+
+/* ============================================================
+   WINDOWS 11 (Fluent) — light
+   ============================================================ */
+[data-os="windows"] {
+  /* Segoe UI Variable renders on Windows; Inter is the closest web fallback. */
+  --font-ui: "Segoe UI Variable", "Segoe UI", "Inter", system-ui, sans-serif;
+
+  --accent: #005fb8;
+  --accent-hover: #0067c0;
+  --accent-text: #ffffff;
+
+  /* colour fallback shown under the <Wallpaper> layer while photos load */
+  --desktop: linear-gradient(135deg, #b9d2ee 0%, #7ea6d8 55%, #6d8fca 100%);
+
+  --surface: rgba(249, 249, 249, 0.85); /* acrylic */
+  --surface-solid: #f9f9f9;
+  --surface-2: rgba(255, 255, 255, 0.6);
+  --surface-hover: rgba(0, 0, 0, 0.04);
+  --surface-active: rgba(0, 0, 0, 0.07);
+
+  /* taskbar / start menu / flyout chrome (mica) */
+  --taskbar-bg: rgba(243, 243, 243, 0.85);
+  --taskbar-border: rgba(0, 0, 0, 0.06);
+  --taskbar-hover: rgba(0, 0, 0, 0.06);
+  --taskbar-text: #1a1a1a;
+  --flyout-bg: rgba(243, 243, 243, 0.92);
+  --flyout-footer: rgba(0, 0, 0, 0.04);
+  --search-bg: #ffffff;
+  --snap-zone: rgba(0, 0, 0, 0.16);
+  --snap-card: rgba(0, 0, 0, 0.05);
+
+  --text: #1a1a1a;
+  --text-dim: #5a5a5a;
+  --text-faint: #8a8a8a;
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.14);
+
+  --win-radius: 8px;
+  --win-radius-inner: 6px;
+  --ctrl-radius: 4px;
+
+  --titlebar-h: 36px;
+  --taskbar-h: 48px;
+
+  --shadow-window: 0 16px 48px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.18);
+  --blur: 30px;
+
+  --close-hover: #c42b1c;
+  --close-hover-text: #ffffff;
+}
+
+/* ============================================================
+   macOS (Sonoma-ish) — light
+   ============================================================ */
+[data-os="macos"] {
+  /* SF Pro comes via -apple-system on Apple devices; Inter is the web fallback. */
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Inter", system-ui, sans-serif;
+
+  --accent: #007aff;
+  --accent-hover: #0a84ff;
+  --accent-text: #ffffff;
+
+  --desktop: linear-gradient(160deg, #4b6cb7 0%, #6a5acd 40%, #b06ab3 75%, #ff8c8c 100%);
+
+  --surface: rgba(246, 246, 248, 0.72); /* vibrancy */
+  --surface-solid: #fbfbfd;
+  --surface-2: rgba(255, 255, 255, 0.5);
+  --surface-hover: rgba(0, 0, 0, 0.05);
+  --surface-active: rgba(0, 0, 0, 0.09);
+
+  --text: #1d1d1f;
+  --text-dim: #5f5f63;
+  --text-faint: #9a9aa0;
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.13);
+
+  --win-radius: 10px;
+  --win-radius-inner: 9px;
+  --ctrl-radius: 7px;
+
+  --titlebar-h: 38px;
+  --menubar-h: 25px;
+  --dock-h: 74px;
+
+  --shadow-window: 0 22px 60px rgba(0, 0, 0, 0.34), 0 4px 12px rgba(0, 0, 0, 0.18);
+  --blur: 34px;
+
+  --mac-close: #ff5f57;
+  --mac-min: #febc2e;
+  --mac-zoom: #28c840;
+}
+
+/* macOS — dark */
+[data-os="macos"][data-theme="dark"] {
+  --accent: #0a84ff;
+  --accent-hover: #409cff;
+  --accent-text: #ffffff;
+
+  --desktop: linear-gradient(160deg, #1c1f3a 0%, #2a2350 45%, #3f2a55 80%, #5a2f44 100%);
+
+  --surface: rgba(40, 40, 44, 0.68);
+  --surface-solid: #1e1e20;
+  --surface-2: rgba(255, 255, 255, 0.06);
+  --surface-hover: rgba(255, 255, 255, 0.07);
+  --surface-active: rgba(255, 255, 255, 0.11);
+
+  --text: #f5f5f7;
+  --text-dim: #b0b0b6;
+  --text-faint: #7f7f86;
+
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.15);
+
+  --surface-solid: #232326;
+  --shadow-window: 0 22px 60px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+/* Windows 11 — dark */
+[data-os="windows"][data-theme="dark"] {
+  --accent: #4cc2ff;
+  --accent-hover: #62caff;
+  --accent-text: #00131f;
+
+  /* colour fallback shown under the <Wallpaper> layer while photos load */
+  --desktop: linear-gradient(135deg, #10203a 0%, #0b1729 55%, #080f1e 100%);
+
+  /* Win11's dark chrome is a near-black NEUTRAL. What tint it has comes from the
+     wallpaper showing through the alpha (mica), never from the colour itself —
+     so these stay grey and let the desktop underneath do the tinting. */
+  --taskbar-bg: rgba(16, 16, 16, 0.86);
+  --taskbar-border: rgba(255, 255, 255, 0.06);
+  --taskbar-hover: rgba(255, 255, 255, 0.08);
+  --taskbar-text: #f2f2f2;
+  --flyout-bg: rgba(18, 18, 18, 0.92);
+  /* both strips read as a step *up* from the menu body, as Win11's do */
+  --flyout-footer: rgba(255, 255, 255, 0.04);
+  --search-bg: rgba(255, 255, 255, 0.055);
+  --snap-zone: rgba(255, 255, 255, 0.24);
+  --snap-card: rgba(255, 255, 255, 0.06);
+
+  --surface: rgba(18, 18, 18, 0.86);
+  --surface-solid: #121212;
+  --surface-2: rgba(255, 255, 255, 0.05);
+  --surface-hover: rgba(255, 255, 255, 0.06);
+  --surface-active: rgba(255, 255, 255, 0.09);
+
+  --text: #f2f2f2;
+  --text-dim: #b8b8b8;
+  --text-faint: #8a8a8a;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+
+  --shadow-window: 0 16px 48px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
+
+  --close-hover: #c42b1c;
+}

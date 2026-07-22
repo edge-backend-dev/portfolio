@@ -1,0 +1,24 @@
+# build output
+dist/
+.output/
+
+# dependencies
+node_modules/
+
+# astro
+.astro/
+
+# environment
+.env
+.env.production
+.dev.vars
+
+# misc
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+
+# local tooling / source assets not needed by the site
+.playwright-cli/
+profile photo/

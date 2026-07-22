@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1170 2532" preserveAspectRatio="xMidYMid slice">
+  <!-- iOS 16 default abstract wallpaper. Built from a diagonal base ramp plus
+       soft radial blooms rather than blur filters: filters at this canvas size
+       rasterise slowly, radials are GPU-cheap and render identically. -->
+  <defs>
+    <linearGradient id="base" x1="0.12" y1="0" x2="0.58" y2="1">
+      <stop offset="0.00" stop-color="#4d0d18" />
+      <stop offset="0.11" stop-color="#a8191f" />
+      <stop offset="0.24" stop-color="#dd2d1e" />
+      <stop offset="0.40" stop-color="#ea4a27" />
+      <stop offset="0.55" stop-color="#d92e6b" />
+      <stop offset="0.68" stop-color="#b32f9d" />
+      <stop offset="0.80" stop-color="#7a3ec9" />
+      <stop offset="0.90" stop-color="#4a62d0" />
+      <stop offset="1.00" stop-color="#33c5d4" />
+    </linearGradient>
+
+    <radialGradient id="maroon">
+      <stop offset="0" stop-color="#33060f" stop-opacity="0.95" />
+      <stop offset="1" stop-color="#33060f" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="darkred">
+      <stop offset="0" stop-color="#75101a" stop-opacity="0.9" />
+      <stop offset="1" stop-color="#75101a" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="orange">
+      <stop offset="0" stop-color="#ffb02e" stop-opacity="0.95" />
+      <stop offset="0.55" stop-color="#f7861f" stop-opacity="0.5" />
+      <stop offset="1" stop-color="#f7861f" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="magenta">
+      <stop offset="0" stop-color="#f0329a" stop-opacity="0.9" />
+      <stop offset="1" stop-color="#f0329a" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="purple">
+      <stop offset="0" stop-color="#8b3fe0" stop-opacity="0.85" />
+      <stop offset="1" stop-color="#8b3fe0" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="blue">
+      <stop offset="0" stop-color="#3f5fe0" stop-opacity="0.85" />
+      <stop offset="1" stop-color="#3f5fe0" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="cyan">
+      <stop offset="0" stop-color="#6df0f0" stop-opacity="0.95" />
+      <stop offset="0.6" stop-color="#35cfe0" stop-opacity="0.55" />
+      <stop offset="1" stop-color="#35cfe0" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="hotred">
+      <stop offset="0" stop-color="#ff5426" stop-opacity="0.8" />
+      <stop offset="1" stop-color="#ff5426" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <rect width="1170" height="2532" fill="url(#base)" />
+
+  <!-- top: dark maroon corner falling into a hot red field -->
+  <ellipse cx="60" cy="20" rx="700" ry="580" fill="url(#maroon)" />
+  <ellipse cx="150" cy="120" rx="380" ry="300" fill="url(#maroon)" />
+  <ellipse cx="1160" cy="180" rx="520" ry="480" fill="url(#darkred)" />
+  <ellipse cx="1170" cy="640" rx="360" ry="320" fill="url(#darkred)" />
+  <ellipse cx="620" cy="640" rx="640" ry="360" fill="url(#hotred)" />
+
+  <!-- The orange band: a chain of overlapping ellipses climbing left→right, so
+       it reads as one sweeping band rather than a single blob. -->
+  <ellipse cx="60" cy="1120" rx="560" ry="270" fill="url(#orange)" transform="rotate(-16 60 1120)" />
+  <ellipse cx="330" cy="1180" rx="400" ry="200" fill="url(#orange)" transform="rotate(-20 330 1180)" />
+  <ellipse cx="620" cy="1120" rx="330" ry="140" fill="url(#orange)" transform="rotate(-26 620 1120)" />
+  <ellipse cx="880" cy="1010" rx="240" ry="95" fill="url(#orange)" transform="rotate(-32 880 1010)" />
+
+  <!-- magenta sweep across the middle, purple beneath it -->
+  <ellipse cx="1090" cy="1420" rx="540" ry="420" fill="url(#magenta)" />
+  <ellipse cx="620" cy="1560" rx="500" ry="230" fill="url(#magenta)" transform="rotate(-14 620 1560)" />
+  <ellipse cx="220" cy="1500" rx="330" ry="170" fill="url(#magenta)" transform="rotate(-20 220 1500)" />
+  <ellipse cx="320" cy="1830" rx="620" ry="400" fill="url(#purple)" />
+  <ellipse cx="880" cy="1900" rx="420" ry="280" fill="url(#purple)" />
+
+  <!-- bottom: blue on the left, cyan flooding the right corner -->
+  <ellipse cx="40" cy="2210" rx="540" ry="470" fill="url(#blue)" />
+  <ellipse cx="1090" cy="2390" rx="740" ry="540" fill="url(#cyan)" />
+  <ellipse cx="240" cy="2530" rx="520" ry="300" fill="url(#cyan)" />
+</svg>
