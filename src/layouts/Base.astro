@@ -33,6 +33,14 @@ const {
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
 
+    <!-- Warm the two above-the-fold images so they're already cached when their
+         React islands request them: the desktop wallpaper (needed the instant the
+         shell paints) and the About portrait (the first app most visitors open).
+         Without this the wallpaper cache-warmer floods the network first and the
+         portrait pops in late. -->
+    <link rel="preload" as="image" href="/wallpapers/wall-1.jpg" />
+    <link rel="preload" as="image" href="/profile.jpg" />
+
     <!-- Inline SVG favicon (monogram) — no external request -->
     <link
       rel="icon"

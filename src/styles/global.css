@@ -22,10 +22,14 @@ body {
   margin: 0;
 }
 
-/* Neutral system-adaptive backdrop for the brief moment between the fallback
-   being hidden and the client-only shell painting — avoids a white flash. */
+/* Backdrop for the brief moment between the fallback being hidden and the
+   client-only shell painting. Using a system `Canvas` color meant pure black in
+   dark mode — reading as a glitchy flash. A fixed deep-blue gradient (echoing the
+   theme-color and the wallpapers) instead makes that instant look like a
+   deliberate OS boot backdrop, in both light and dark, and blends into the
+   wallpaper as it fades in. */
 html {
-  background: Canvas;
+  background: linear-gradient(160deg, #1e3a5f 0%, #0d1420 100%) fixed;
 }
 
 body {

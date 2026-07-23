@@ -76,6 +76,8 @@ export default function About({ api }: { api: AppApi }) {
               alt={`Portrait of ${profile.name}`}
               width={600}
               height={888}
+              decoding="async"
+              fetchPriority="high"
               onError={() => setPhotoFailed(true)}
             />
           )}
