@@ -131,13 +131,31 @@ function buildStrips(el: HTMLElement): {
   const r = el.getBoundingClientRect();
   const W = r.width;
   const H = r.height;
-  const N = Math.max(8, Math.min(28, Math.round(H / 18)));
+  // Strip count sets how finely the funnel curve is sampled — NOT the motion,
+  // timing or shape, which are identical at any N. Each strip is a full deep
+  // clone of the window, so N is also the per-open cost multiplier: a tall,
+  // content-heavy window (Settings, Services, Contact…) cloned 28× hitches
+  // visibly at launch. Capping at 16 halves that worst-case work while staying
+  // well above where the neck starts to facet; short windows keep their old
+  // density (~H/18) untouched, since only the tall ones were ever expensive.
+  const N = Math.max(8, Math.min(16, Math.round(H / 18)));
   const bandH = H / N;
 
   const container = document.createElement("div");
   container.setAttribute("data-genie-warp", "");
   container.style.cssText =
     "position:fixed;inset:0;pointer-events:none;z-index:2147483000;contain:strict;";
+
+  // Freeze every animation/transition inside the clones for the length of the
+  // warp. Otherwise any live effect in the window's content — the Projects
+  // skeleton shimmer, the availability-dot pulse — keeps repainting *inside*
+  // each of the N strips, N× per frame, on top of the warp's own repaint. That
+  // compounding paint load is what let the strips visibly step. The genie is
+  // meant to pour in as one solid sheet, so a static snapshot is also correct.
+  const freeze = document.createElement("style");
+  freeze.textContent =
+    "[data-genie-warp] *{animation:none!important;transition:none!important;}";
+  container.appendChild(freeze);
 
   // The window paints with a translucent surface + backdrop-filter (vibrancy).
   // A moving clone would re-sample the desktop behind it and go see-through, so
