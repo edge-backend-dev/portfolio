@@ -9,6 +9,7 @@ import {
   saveWallpaper,
 } from "../shell/persistence";
 import { detectOS } from "../shell/detectOS";
+import { armImmersive } from "../shell/immersive";
 import WindowsShell from "./os/windows/WindowsShell";
 import MacShell from "./os/macos/MacShell";
 import IOSShell from "./os/ios/IOSShell";
@@ -61,6 +62,9 @@ export default function Shell() {
     // Persist a ?os= override so the chosen look sticks after the param is gone.
     const q = queryOS();
     if (q) saveOSOverride(q);
+
+    // On touch devices, reclaim the browser's URL bar at the first touch.
+    return armImmersive();
   }, []);
 
   const os: OSKind = override ?? autoOS;
