@@ -1,19 +1,20 @@
 // Cloudflare Pages Function — POST /api/contact
 //
-// The ONLY backend piece at launch: it validates a contact submission and
-// relays it as an email. It is deliberately provider-agnostic and swappable —
-// to route through your own BaaS/D1 later, replace `sendEmail` with a fetch to
-// your endpoint. Nothing else in the site needs to change.
+// A thin, credential-holding relay. It validates the submission cheaply, then
+// hands it to the `contact` function on my own backend (see
+// baas/functions/contact.ts), which stores the message and emails me.
+//
+// Why the hop instead of calling the backend from the browser: the API key must
+// never ship to the client. This file runs on Cloudflare's edge, so the key
+// lives in the Pages environment and the browser only ever sees /api/contact.
 //
 // Configure via Cloudflare Pages environment variables:
-//   RESEND_API_KEY  – API key from https://resend.com (Secret)
-//   CONTACT_TO      – where messages are delivered (e.g. your email)
-//   CONTACT_FROM    – verified sender, e.g. "Portfolio <hello@yourdomain.com>"
+//   BAAS_URL      – backend base URL, no trailing slash (Plaintext)
+//   BAAS_API_KEY  – project data-plane key, bk_live_… (Secret)
 
 interface Env {
-  RESEND_API_KEY?: string;
-  CONTACT_TO?: string;
-  CONTACT_FROM?: string;
+  BAAS_URL?: string;
+  BAAS_API_KEY?: string;
 }
 
 interface ContactPayload {
@@ -27,13 +28,8 @@ interface ContactPayload {
 }
 
 // Mirrors CATEGORIES in src/components/apps/Contact.tsx. Unknown values are
-// ignored rather than trusted, so nothing arbitrary reaches the email body.
-const CATEGORY_LABELS: Record<string, string> = {
-  inquiry: "Project Inquiry",
-  hiring: "Job Opportunity",
-  collab: "Collaboration",
-  other: "Just Saying Hello",
-};
+// dropped rather than trusted, so nothing arbitrary is forwarded.
+const CATEGORIES = new Set(["inquiry", "hiring", "collab", "other"]);
 
 type Ctx = { request: Request; env: Env };
 
@@ -63,8 +59,10 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
   const message = (body.message ?? "").trim();
   const subject = (body.subject ?? "").trim();
   const company = (body.company ?? "").trim();
-  const category = CATEGORY_LABELS[(body.category ?? "").trim()] ?? "";
+  const category = (body.category ?? "").trim();
 
+  // The backend validates all of this again — it is the real gate. Repeating it
+  // here just means junk never costs a round trip or a rate-limit slot.
   const errors: string[] = [];
   if (name.length < 1 || name.length > 100) errors.push("name");
   if (!EMAIL_RE.test(email) || email.length > 200) errors.push("email");
@@ -75,60 +73,52 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
     return json({ ok: false, error: `Invalid fields: ${errors.join(", ")}` }, 400);
   }
 
-  if (!env.RESEND_API_KEY || !env.CONTACT_TO || !env.CONTACT_FROM) {
-    return json(
-      { ok: false, error: "Contact endpoint not configured yet." },
-      501,
-    );
+  if (!env.BAAS_URL || !env.BAAS_API_KEY) {
+    return json({ ok: false, error: "Contact endpoint not configured yet." }, 501);
   }
 
   try {
-    await sendEmail(env, { name, email, message, subject, company, category });
+    const res = await fetch(
+      `${env.BAAS_URL.replace(/\/$/, "")}/api/functions/contact`,
+      {
+        method: "POST",
+        headers: {
+          "x-api-key": env.BAAS_API_KEY,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          message,
+          subject,
+          company,
+          category: CATEGORIES.has(category) ? category : "",
+          // Server-set, so it cannot be forged by the client. Used only to
+          // triage spam from the dashboard.
+          meta: {
+            ip: request.headers.get("cf-connecting-ip") ?? "",
+            userAgent: request.headers.get("user-agent") ?? "",
+            referer: request.headers.get("referer") ?? "",
+          },
+        }),
+        // The backend caps a run at 30s; give up first rather than leave the
+        // visitor watching a spinner.
+        signal: AbortSignal.timeout(20_000),
+      },
+    );
+
+    if (!res.ok) {
+      // 4xx here means the backend rejected the payload — pass its reason
+      // through so the form can show something useful. 5xx stays opaque.
+      if (res.status >= 400 && res.status < 500) {
+        const detail = (await res.json().catch(() => null)) as { error?: string } | null;
+        return json({ ok: false, error: detail?.error ?? "Invalid submission." }, 400);
+      }
+      throw new Error(`Backend responded ${res.status}`);
+    }
+
     return json({ ok: true });
-  } catch (err) {
+  } catch {
     return json({ ok: false, error: "Failed to send. Please email directly." }, 502);
   }
 };
-
-interface MailData {
-  name: string;
-  email: string;
-  message: string;
-  subject: string;
-  company: string;
-  category: string;
-}
-
-async function sendEmail(env: Env, data: MailData) {
-  // Subject line carries the inquiry type so it's triageable from the inbox list.
-  const tag = data.category ? `[${data.category}] ` : "";
-  const line = data.subject || `Portfolio contact from ${data.name}`;
-
-  const header = [
-    `Name: ${data.name}`,
-    `Email: ${data.email}`,
-    data.company && `Company: ${data.company}`,
-    data.category && `Inquiry type: ${data.category}`,
-    data.subject && `Subject: ${data.subject}`,
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.RESEND_API_KEY}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      from: env.CONTACT_FROM,
-      to: [env.CONTACT_TO],
-      reply_to: data.email,
-      subject: `${tag}${line}`,
-      text: `${header}\n\n${data.message}`,
-    }),
-  });
-  if (!res.ok) {
-    throw new Error(`Email provider responded ${res.status}`);
-  }
-}

@@ -22,3 +22,6 @@ npm-debug.log*
 # local tooling / source assets not needed by the site
 .playwright-cli/
 profile photo/
+
+# Local BaaS project pointer (per machine, never committed)
+.baas.json

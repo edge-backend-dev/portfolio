@@ -50,18 +50,27 @@ When a project is done, push an entry into the `projects` array in
 
 ## Contact form
 
-The form posts to `/api/contact` (`functions/api/contact.ts`). To make it send mail,
-set these environment variables in **Cloudflare Pages → Settings → Environment variables**:
+The form posts to `/api/contact` (`functions/api/contact.ts`), a Cloudflare Pages
+Function that relays the submission to the `contact` function on my own backend
+(source kept in `baas/functions/contact.ts`). The backend stores every message in
+the `contact_messages` collection and emails a notification; storage is the source
+of truth, so a mail outage can never lose a message.
 
-| Variable         | Example                              |
-| ---------------- | ------------------------------------ |
-| `RESEND_API_KEY` | `re_...` (from https://resend.com)   |
-| `CONTACT_TO`     | `you@example.com`                    |
-| `CONTACT_FROM`   | `Portfolio <hello@yourdomain.com>`   |
+The browser never talks to the backend directly — the API key stays on the edge:
 
-Until configured, the form returns 501 and the UI shows your direct email.
-To route it through your own BaaS later, swap the `sendEmail` call in
-`functions/api/contact.ts` for a fetch to your endpoint — nothing else changes.
+| Variable       | Example                    | Type      |
+| -------------- | -------------------------- | --------- |
+| `BAAS_URL`     | `https://api.example.com`  | Plaintext |
+| `BAAS_API_KEY` | `bk_live_...`              | Secret    |
+
+Set both in **Cloudflare Pages → Settings → Environment variables**. Until they
+exist, the form returns 501 and the UI shows the direct email address.
+
+To redeploy the backend function after editing it:
+
+```bash
+baas functions deploy contact --file ./baas/functions/contact.ts
+```
 
 ## Deploy to Cloudflare Pages
 

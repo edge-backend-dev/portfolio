@@ -2,8 +2,8 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { profile } from "../../data/profile";
 import { Icon } from "./icons";
 
-// Endpoint is implemented in Phase 7 (Cloudflare Pages Function). Designed to be
-// re-pointed at your own BaaS later by changing this one constant.
+// A Cloudflare Pages Function (functions/api/contact.ts) that relays to my own
+// backend. Same-origin on purpose: no key or backend URL ever reaches the browser.
 const CONTACT_ENDPOINT = "/api/contact";
 
 type Status = "idle" | "sending" | "ok" | "error";
