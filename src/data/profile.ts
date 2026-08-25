@@ -20,12 +20,12 @@ export const profile: Profile = {
     note: "Taking on a few projects at a time. Most take 1–4 weeks, depending on scope and how fast we iterate.",
     replyTime: "Usually within 1–2 business days.",
   },
-  email: "oluwadamilaredavid586@gmail.com",
+  email: "portfolio@oluwadamilaredavid.com",
   links: [
     {
       label: "Email",
-      href: "mailto:oluwadamilaredavid586@gmail.com",
-      handle: "oluwadamilaredavid586@gmail.com",
+      href: "mailto:portfolio@oluwadamilaredavid.com",
+      handle: "portfolio@oluwadamilaredavid.com",
       icon: "email",
     },
     {

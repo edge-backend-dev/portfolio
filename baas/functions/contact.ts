@@ -59,9 +59,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 /**
  * Where the notification goes. Kept in the vault so this source carries no
  * personal address; the fallback means a fresh project still notifies me
- * before the secret exists.
+ * before the secret exists. Forwards to my inbox via Cloudflare Email Routing.
  */
-const FALLBACK_NOTIFY_TO = "oluwadamilaredavid586@gmail.com";
+const FALLBACK_NOTIFY_TO = "portfolio@oluwadamilaredavid.com";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
