@@ -169,12 +169,7 @@ export default async function contact(req: FnRequest) {
         "</table>" +
         '<div style="white-space:pre-wrap;padding:12px 14px;border-left:3px solid #ccc">' +
         esc(message) +
-        "</div>" +
-        '<p style="color:#888;font-size:12px;margin-top:20px">Reply to ' +
-        esc(from) +
-        ". Stored as " +
-        esc(record.id) +
-        " in contact_messages.</p></div>",
+        "</div></div>",
     });
     notified = true;
   } catch (e) {
