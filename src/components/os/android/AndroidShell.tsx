@@ -11,7 +11,7 @@ import {
   type Box,
   type ZoomOpts,
 } from "../../../shell/originZoom";
-import AndroidStatusBar from "./AndroidStatusBar";
+import { useRouteSync, parseRoute, type Route } from "../../../shell/history";
 import AndroidHome from "./AndroidHome";
 import AndroidAppView from "./AndroidAppView";
 import AndroidRecents from "./AndroidRecents";
@@ -42,12 +42,20 @@ const RECENTS_MAX = 8;
 // destinations the nav bar reaches — the Recents overview, split-screen, and a
 // full-screen search — all layered over the same launcher.
 export default function AndroidShell(props: SkinProps) {
-  const [openId, setOpenId] = useState<string | null>(null);
+  // Resolved synchronously so a deep link paints the right screen on the first
+  // frame instead of flashing the launcher.
+  const start = typeof window === "undefined" ? null : parseRoute(window.location);
+
+  const [openId, setOpenId] = useState<string | null>(() => start?.apps[0] ?? null);
   const [closing, setClosing] = useState(false);
-  const [recents, setRecents] = useState<string[]>([]);
-  const [overview, setOverview] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [split, setSplit] = useState<SplitPair | null>(null);
+  // Seed Recents with whatever the URL says is open, so the overview isn't empty
+  // on a cold deep link.
+  const [recents, setRecents] = useState<string[]>(() =>
+    start?.split ? [start.split.top, start.split.bottom] : start?.apps.slice(0, 1) ?? [],
+  );
+  const [overview, setOverview] = useState(() => start?.overlay === "overview");
+  const [searching, setSearching] = useState(() => start?.overlay === "spotlight");
+  const [split, setSplit] = useState<SplitPair | null>(() => start?.split ?? null);
   const [splitPick, setSplitPick] = useState<string | null>(null);
 
   const meta = openId ? getApp(openId) : undefined;
@@ -64,7 +72,6 @@ export default function AndroidShell(props: SkinProps) {
         : meta
           ? "app"
           : "home";
-  const overWallpaper = mode === "home" || mode === "overview" || mode === "search";
 
   function pushRecent(id: string) {
     setRecents((r) => [id, ...r.filter((x) => x !== id)].slice(0, RECENTS_MAX));
@@ -142,6 +149,30 @@ export default function AndroidShell(props: SkinProps) {
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  // Browser / system Back. The nav bar's own Back button and Escape still call
+  // goBack() directly; this mirrors the same layering into history so the
+  // browser gesture unwinds one layer instead of leaving the site.
+  const route: Route = {
+    apps: openId && !split ? [openId] : [],
+    overlay: searching ? "spotlight" : overview ? "overview" : null,
+    split,
+    splitPick,
+  };
+  useRouteSync(route, (r) => {
+    setSearching(r.overlay === "spotlight");
+    setOverview(r.overlay === "overview" || !!r.splitPick);
+    setSplitPick(r.splitPick);
+    setSplit(r.split);
+    const target = r.split ? null : r.apps[0] ?? null;
+    if (target === openId) return;
+    if (target === null) void requestClose();
+    else {
+      originBox.current = null; // no icon to grow from on a history jump
+      pushRecent(target);
+      setOpenId(target);
+    }
+  });
+
   // Split-screen: pick a top app from Recents, then a bottom one.
   function startSplit(id: string) {
     setSplitPick(id);
@@ -175,7 +206,6 @@ export default function AndroidShell(props: SkinProps) {
   return (
     <div className="and-viewport">
       <div className={`and-screen mode-${mode}`}>
-        <AndroidStatusBar dark={overWallpaper} />
         <div className={`and-stage${closing ? " closing" : ""}`} ref={stageRef}>
           <AndroidHome onOpen={open} onSearch={() => setSearching(true)} />
           {meta && !split && <AndroidAppView meta={meta} api={api} onHome={() => void requestClose()} />}

@@ -1,0 +1,9 @@
+# The portfolio is a single-page shell whose in-app navigation is mirrored into
+# real URLs (/projects, /about+contact, /split/a+b) so Back, Forward and deep
+# links work. The build emits only index.html, so every one of those paths has to
+# be served it and routed client-side.
+#
+# 200 (rewrite), not 301/302 — the URL must survive so the shell can read it.
+# Cloudflare Pages matches Functions (/api/*) and real static assets BEFORE this
+# rule, so the contact endpoint, fonts, wallpapers and resume.pdf are unaffected.
+/*  /index.html  200

@@ -11,10 +11,19 @@ import {
   type Box,
   type ZoomOpts,
 } from "../../../shell/originZoom";
-import IOSStatusBar from "./IOSStatusBar";
+import { useRouteSync, parseRoute, type Route } from "../../../shell/history";
 import HomeScreen from "./HomeScreen";
 import Spotlight from "./Spotlight";
 import AppView from "./AppView";
+
+// Resolve the opening screen from the URL synchronously, in the state
+// initializers below — deferring it to an effect would paint the home screen
+// first and then swap, flashing the wrong screen on every deep link.
+function initial() {
+  if (typeof window === "undefined") return { app: null as string | null, spotlight: false };
+  const r = parseRoute(window.location);
+  return { app: r.apps[0] ?? r.split?.top ?? null, spotlight: r.overlay === "spotlight" };
+}
 
 interface SkinProps {
   theme: Theme;
@@ -35,9 +44,9 @@ const CLOSE: ZoomOpts = { duration: 300, easing: "cubic-bezier(0.4, 0, 0.6, 1)" 
 // iOS uses the home-screen → fullscreen-app paradigm. No window manager: one app
 // is open at a time and fills the screen.
 export default function IOSShell(props: SkinProps) {
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(() => initial().app);
   const [closing, setClosing] = useState(false); // app is shrinking back to its icon
-  const [spotlight, setSpotlight] = useState(false);
+  const [spotlight, setSpotlight] = useState(() => initial().spotlight);
   const meta = openId ? getApp(openId) : undefined;
 
   const screenRef = useRef<HTMLDivElement>(null);
@@ -92,6 +101,25 @@ export default function IOSShell(props: SkinProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [openId, spotlight]);
 
+  // Browser Back/Forward. The layer order matches Escape above: Spotlight is
+  // shallower than the open app, so Back dismisses it first.
+  const route: Route = {
+    apps: openId ? [openId] : [],
+    overlay: spotlight ? "spotlight" : null,
+    split: null,
+    splitPick: null,
+  };
+  useRouteSync(route, (r) => {
+    setSpotlight(r.overlay === "spotlight");
+    const target = r.apps[0] ?? null;
+    if (target === openId) return;
+    if (target === null) void requestClose();
+    else {
+      originRef.current = null; // no icon to grow from on a history jump
+      setOpenId(target);
+    }
+  });
+
   const api: AppApi = {
     ...props,
     // In-app navigation (e.g. a link that opens another app) has no launcher
@@ -106,7 +134,6 @@ export default function IOSShell(props: SkinProps) {
   return (
     <div className="ios-viewport">
       <div className={`ios-screen${closing ? " closing" : ""}`} ref={screenRef}>
-        <IOSStatusBar dark={!meta} />
         <HomeScreen onOpen={open} onSearch={() => setSpotlight(true)} />
         <Spotlight open={spotlight} onLaunch={open} onClose={() => setSpotlight(false)} />
         {meta && <AppView meta={meta} api={api} onHome={() => void requestClose()} />}

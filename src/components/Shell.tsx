@@ -9,7 +9,10 @@ import {
   saveWallpaper,
 } from "../shell/persistence";
 import { detectOS } from "../shell/detectOS";
+import { assertReserved } from "../shell/history";
+import { apps, macOnlyApps } from "../data/apps";
 import { armImmersive } from "../shell/immersive";
+import ExitFullscreenButton from "./ExitFullscreenButton";
 import WindowsShell from "./os/windows/WindowsShell";
 import MacShell from "./os/macos/MacShell";
 import IOSShell from "./os/ios/IOSShell";
@@ -63,6 +66,10 @@ export default function Shell() {
     const q = queryOS();
     if (q) saveOSOverride(q);
 
+    // App ids double as URL segments, so one that shadowed a system segment
+    // ("spotlight", "overview", "start", "split") would be unroutable. Dev-only.
+    assertReserved([...apps, ...macOnlyApps].map((a) => a.id));
+
     // On touch devices, reclaim the browser's URL bar at the first touch.
     return armImmersive();
   }, []);
@@ -96,6 +103,7 @@ export default function Shell() {
   return (
     <div className="shell-root" data-os={os} data-theme={theme}>
       {renderSkin(os, skinProps)}
+      <ExitFullscreenButton />
     </div>
   );
 }

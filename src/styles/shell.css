@@ -12,6 +12,37 @@
   overflow: hidden;
 }
 
+/* Fallback exit for the auto-fullscreen in shell/immersive.ts (Android only —
+   iOS Safari never actually enters it). Neutral dark pill so it reads over any
+   wallpaper or app underneath; safe-area aware since it sits in the same
+   corner a display cutout would. */
+.exit-fullscreen-btn {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 999;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(20, 20, 22, 0.68);
+  backdrop-filter: blur(16px) saturate(1.4);
+  color: #fff;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.exit-fullscreen-btn:hover {
+  background: rgba(32, 32, 35, 0.75);
+}
+.exit-fullscreen-btn:active {
+  background: rgba(10, 10, 11, 0.75);
+}
+.exit-fullscreen-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 /* ---------- desktop ---------- */
 .win-desktop {
   position: absolute;
@@ -1320,42 +1351,6 @@
   color: var(--text);
 }
 
-/* status bar */
-.ios-statusbar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--statusbar-h);
-  display: flex;
-  align-items: center;
-  padding: 6px 20px 0 32px;
-  z-index: 50;
-  pointer-events: none;
-}
-.ios-statusbar.on-dark {
-  color: #fff;
-}
-.ios-sb-time {
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  /* iOS centres the time in the ear left of the notch rather than ragging it
-     against the screen edge. */
-  min-width: 54px;
-  text-align: center;
-}
-/* Holds open the space the notch/Dynamic Island occupies, so the two clusters
-   sit in their real positions instead of spreading to fill the bar. */
-.ios-sb-notch {
-  flex: 1;
-}
-.ios-sb-right {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
 /* home screen */
 .ios-home {
   position: absolute;
@@ -1935,65 +1930,6 @@
   flex-direction: column;
 }
 
-/* status bar */
-.and-statusbar {
-  flex: 0 0 var(--statusbar-h);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-  z-index: 50;
-}
-.and-statusbar.on-dark {
-  color: #fff;
-}
-.and-sb-left {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.and-sb-time {
-  letter-spacing: 0.2px;
-}
-.and-sb-notif {
-  opacity: 0.92;
-}
-.and-sb-right {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.and-sb-signal {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 1px;
-}
-.and-sb-arrows,
-.and-sb-bars {
-  display: block;
-}
-/* battery percentage pill — filled chip on the dark home, outline over apps */
-.and-sb-batt {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 26px;
-  height: 16px;
-  padding: 0 5px;
-  border-radius: 8px;
-  font-size: 10.5px;
-  font-weight: 700;
-  border: 1.4px solid currentColor;
-}
-.and-statusbar.on-dark .and-sb-batt {
-  background: #fff;
-  border-color: #fff;
-  color: #111;
-}
-
 .and-stage {
   position: relative;
   flex: 1 1 auto;
@@ -2332,16 +2268,9 @@
 .and-screen.mode-split .and-nav-btn {
   color: var(--text);
 }
-/* status bar strip matches the surface it sits over */
-.and-screen.mode-app .and-statusbar,
-.and-screen.mode-split .and-statusbar {
-  background: var(--surface-solid);
-}
-
-/* Search is One UI's frosted "Finder" surface — the status/nav strips stay
-   transparent so the blurred backdrop shows through them (no opaque black
-   bands breaking the glass), white icons over it. */
-.and-screen.mode-search .and-statusbar,
+/* Search is One UI's frosted "Finder" surface — the nav strip stays
+   transparent so the blurred backdrop shows through it (no opaque black
+   band breaking the glass), white icons over it. */
 .and-screen.mode-search .and-navbar {
   background: transparent;
   border-top: 0;

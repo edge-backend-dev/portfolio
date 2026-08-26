@@ -32,11 +32,53 @@ function clampGeom(g: Geometry, area: WorkArea): Geometry {
   return { x, y, w, h };
 }
 
-export function useWindowManager(area: WorkArea) {
-  const [windows, setWindows] = useState<WinState[]>([]);
+// Builds the WinState for a window being opened for the first time. Shared by
+// openApp and the initial-state seed so a window restored from the URL lands in
+// exactly the same place it would have if you'd clicked it open.
+function makeWindow(id: string, cascadeIndex: number, z: number, area: WorkArea): WinState {
+  // A window left open is restored where the visitor left it (position,
+  // size, zoom) across a reload; full screen is intentionally not restored
+  // (see SavedGeom). A first — or post-close — open uses one shared standard
+  // size for every app, cascaded, so fresh opens stay uniform and tidy.
+  const saved = loadGeom(id);
+  const cascade = cascadeIndex % 6;
+  const base: Geometry = saved
+    ? { x: saved.x, y: saved.y, w: saved.w, h: saved.h }
+    : {
+        x: 90 + cascade * 30,
+        y: (area.top || 0) + 40 + cascade * 30,
+        w: STANDARD_W,
+        h: STANDARD_H,
+      };
+  // clamp guards the restored case too: a window left half off-screen, or
+  // saved on a much wider display, is pulled back into reach.
+  const g = clampGeom(base, area);
+  const maximized = saved?.maximized ?? false;
+  return {
+    id,
+    ...g,
+    z,
+    maximized,
+    fullscreen: false,
+    minimized: false,
+    // Coming back already zoomed, the saved geometry IS the restore
+    // target — without it the zoom button has nowhere to put it back.
+    restore: maximized ? g : undefined,
+  };
+}
+
+// `initialIds` seeds the open windows synchronously, in z-order (last = focused).
+// The desktop shells resolve it from the URL, so a deep link paints the right
+// layout on the first frame — and, just as importantly, doesn't spend a spurious
+// history entry opening those windows from an effect after the first paint.
+export function useWindowManager(area: WorkArea, initialIds: string[] = []) {
   const zTop = useRef(200);
   const areaRef = useRef(area);
   areaRef.current = area;
+
+  const [windows, setWindows] = useState<WinState[]>(() =>
+    initialIds.map((id, i) => makeWindow(id, i, ++zTop.current, area)),
+  );
 
   const persist = useCallback((w: WinState) => {
     // persist the "restore" geometry when zoomed/full screen, else current, so a
@@ -59,38 +101,7 @@ export function useWindowManager(area: WorkArea) {
       if (existing) {
         return prev.map((w) => (w.id === id ? { ...w, minimized: false, z } : w));
       }
-      // A window left open is restored where the visitor left it (position,
-      // size, zoom) across a reload; full screen is intentionally not restored
-      // (see SavedGeom). A first — or post-close — open uses one shared standard
-      // size for every app, cascaded, so fresh opens stay uniform and tidy.
-      const saved = loadGeom(id);
-      const cascade = prev.length % 6;
-      const base: Geometry = saved
-        ? { x: saved.x, y: saved.y, w: saved.w, h: saved.h }
-        : {
-            x: 90 + cascade * 30,
-            y: (areaRef.current.top || 0) + 40 + cascade * 30,
-            w: STANDARD_W,
-            h: STANDARD_H,
-          };
-      // clamp guards the restored case too: a window left half off-screen, or
-      // saved on a much wider display, is pulled back into reach.
-      const g = clampGeom(base, areaRef.current);
-      const maximized = saved?.maximized ?? false;
-      return [
-        ...prev,
-        {
-          id,
-          ...g,
-          z,
-          maximized,
-          fullscreen: false,
-          minimized: false,
-          // Coming back already zoomed, the saved geometry IS the restore
-          // target — without it the zoom button has nowhere to put it back.
-          restore: maximized ? g : undefined,
-        },
-      ];
+      return [...prev, makeWindow(id, prev.length, z, areaRef.current)];
     });
   }, []);
 
@@ -101,6 +112,25 @@ export function useWindowManager(area: WorkArea) {
     // page reload; only an explicit close resets it.)
     clearGeom(id);
     setWindows((prev) => prev.filter((w) => w.id !== id));
+  }, []);
+
+  // Reconciles the open windows to `ids` (z-order, last = focused). This is the
+  // browser Back/Forward path: it deliberately does NOT clearGeom the windows it
+  // drops, because that close is undoable with Forward, which has to bring the
+  // window back where it was — unlike closeApp above, which is a deliberate
+  // "I'm done with this" and resets it.
+  const syncApps = useCallback((ids: string[]) => {
+    setWindows((prev) => {
+      let z = zTop.current;
+      const next = ids.map((id, i) => {
+        const existing = prev.find((w) => w.id === id);
+        return existing
+          ? { ...existing, minimized: false, z: ++z }
+          : makeWindow(id, i, ++z, areaRef.current);
+      });
+      zTop.current = z;
+      return next;
+    });
   }, []);
 
   const minimizeApp = useCallback((id: string) => {
@@ -259,6 +289,7 @@ export function useWindowManager(area: WorkArea) {
     windows,
     openApp,
     closeApp,
+    syncApps,
     minimizeApp,
     toggleMaximize,
     toggleFullscreen,

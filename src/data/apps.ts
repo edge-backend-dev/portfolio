@@ -72,7 +72,7 @@ export const apps: AppMeta[] = [
 // of `apps` above, the list every launcher maps over. Finder has no meaning on
 // Windows / iOS / Android, and only the Mac Dock ever opens it, so this keeps it
 // off every other skin's home screen, Start menu and search without a filter.
-const macOnlyApps: AppMeta[] = [
+export const macOnlyApps: AppMeta[] = [
   {
     id: "finder",
     title: "Finder",

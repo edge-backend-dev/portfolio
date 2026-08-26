@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWindowManager, type WorkArea } from "../../../shell/useWindowManager";
+import { useRouteSync, parseRoute, resetUrlToHome, type Route } from "../../../shell/history";
 import { getApp } from "../../../data/apps";
 import type { AppApi } from "../../apps/appApi";
 import type { OSKind, Theme, WallpaperPref } from "../../../shell/types";
@@ -32,10 +33,22 @@ const EDGE = 12;
 const KEEP_TOP = WORK_AREA.top + 38;
 const KEEP_BOTTOM = WORK_AREA.bottom;
 
+// The opening layout, resolved from the URL before the first paint. A bare "/"
+// still lands on About so visitors arrive on content — but seeding it here
+// rather than opening it from an effect keeps that default out of the history
+// stack, so the first Back from a fresh visit leaves the site as it should.
+function initial() {
+  if (typeof window === "undefined") return { apps: ["about"], overlay: null as string | null };
+  const r = parseRoute(window.location);
+  const apps = r.split ? [r.split.top, r.split.bottom] : r.apps;
+  return { apps: apps.length ? apps : ["about"], overlay: r.overlay };
+}
+
 export default function MacShell(props: SkinProps) {
-  const wm = useWindowManager(WORK_AREA);
-  const [spotlight, setSpotlight] = useState(false);
-  const [overview, setOverview] = useState(false);
+  const [start] = useState(initial); // lazy: read the URL once, on mount
+  const wm = useWindowManager(WORK_AREA, start.apps);
+  const [spotlight, setSpotlight] = useState(start.overlay === "spotlight");
+  const [overview, setOverview] = useState(start.overlay === "overview");
   const [chromeRevealed, setChromeRevealed] = useState(false);
   // read by the keydown handler, which must not re-bind on every window change
   const fsRef = useRef<string | null>(null);
@@ -45,14 +58,6 @@ export default function MacShell(props: SkinProps) {
     setSpotlight(false);
     setOverview(dir === "up");
   });
-
-  const opened = useRef(false);
-  useEffect(() => {
-    if (!opened.current) {
-      opened.current = true;
-      wm.openApp("about");
-    }
-  }, [wm]);
 
   // ⌘K is the primary binding: real Spotlight is ⌘Space, but macOS itself
   // swallows that before the browser ever sees it. ⌘Space is still handled for
@@ -94,6 +99,31 @@ export default function MacShell(props: SkinProps) {
     [wm.windows],
   );
   fsRef.current = fullscreenId;
+
+  // Browser Back/Forward. Layer order matches Escape above — Mission Control and
+  // Spotlight are shallower than the windows beneath them. Opening a window is a
+  // navigation, so Back closes the top one and Forward reopens it where it was
+  // (see wm.syncApps). Refocusing an already-open window is deliberately NOT a
+  // history step: Back would appear to do nothing.
+  const openIds = useMemo(
+    () => [...wm.windows].sort((a, b) => a.z - b.z).map((w) => w.id),
+    [wm.windows],
+  );
+  const route: Route = {
+    apps: openIds,
+    overlay: spotlight ? "spotlight" : overview ? "overview" : null,
+    split: null,
+    splitPick: null,
+  };
+  const applyRoute = useCallback(
+    (r: Route) => {
+      setSpotlight(r.overlay === "spotlight");
+      setOverview(r.overlay === "overview");
+      wm.syncApps(r.apps);
+    },
+    [wm],
+  );
+  useRouteSync(route, applyRoute);
 
   // Mission Control needs the menu bar and dock on show — its overlay reserves
   // padding for them and deliberately sits a layer BELOW them — so full screen's
@@ -141,6 +171,9 @@ export default function MacShell(props: SkinProps) {
     openApp: wm.openApp,
     resetLayout: () => {
       wm.windows.forEach((w) => wm.resetGeom(w.id));
+      // Drop the layout from the URL first — the reload rehydrates from it, and
+      // would otherwise restore the very layout being reset.
+      resetUrlToHome();
       window.location.reload();
     },
   };

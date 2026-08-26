@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWindowManager, type WorkArea } from "../../../shell/useWindowManager";
+import { useRouteSync, parseRoute, resetUrlToHome, type Route } from "../../../shell/history";
 import { apps, getApp } from "../../../data/apps";
 import type { AppApi } from "../../apps/appApi";
 import type { OSKind, Theme, WallpaperPref } from "../../../shell/types";
@@ -24,25 +25,28 @@ interface SkinProps {
 
 const WORK_AREA: WorkArea = { top: 0, bottom: 48 };
 
+// The opening layout, resolved from the URL before the first paint. A bare "/"
+// still lands on About so visitors arrive on content — but seeding it here
+// rather than opening it from an effect keeps that default out of the history
+// stack, so the first Back from a fresh visit leaves the site as it should.
+function initial() {
+  if (typeof window === "undefined") return { apps: ["about"], overlay: null as string | null };
+  const r = parseRoute(window.location);
+  const apps = r.split ? [r.split.top, r.split.bottom] : r.apps;
+  return { apps: apps.length ? apps : ["about"], overlay: r.overlay };
+}
+
 export default function WindowsShell(props: SkinProps) {
-  const wm = useWindowManager(WORK_AREA);
-  const [startOpen, setStartOpen] = useState(false);
-  const [taskView, setTaskView] = useState(false);
+  const [start] = useState(initial); // lazy: read the URL once, on mount
+  const wm = useWindowManager(WORK_AREA, start.apps);
+  const [startOpen, setStartOpen] = useState(start.overlay === "start");
+  const [taskView, setTaskView] = useState(start.overlay === "overview");
 
   // Swipe up for Task view, down to leave it.
   useOverviewGesture((dir) => {
     setStartOpen(false);
     setTaskView(dir === "up");
   });
-
-  // Open the About window once on first load so visitors land on content.
-  const opened = useRef(false);
-  useEffect(() => {
-    if (!opened.current) {
-      opened.current = true;
-      wm.openApp("about");
-    }
-  }, [wm]);
 
   // Escape closes the Start menu / Task view.
   useEffect(() => {
@@ -62,11 +66,39 @@ export default function WindowsShell(props: SkinProps) {
     return visible.reduce((a, b) => (a.z > b.z ? a : b)).id;
   }, [wm.windows]);
 
+  // Browser Back/Forward. Opening a window is a navigation, so Back closes the
+  // top one and Forward reopens it where it was (see wm.syncApps). Merely
+  // switching focus between already-open windows is deliberately NOT a history
+  // step: Back would appear to do nothing, and incidental clicks would bury the
+  // exit behind dozens of entries.
+  const openIds = useMemo(
+    () => [...wm.windows].sort((a, b) => a.z - b.z).map((w) => w.id),
+    [wm.windows],
+  );
+  const route: Route = {
+    apps: openIds,
+    overlay: startOpen ? "start" : taskView ? "overview" : null,
+    split: null,
+    splitPick: null,
+  };
+  const applyRoute = useCallback(
+    (r: Route) => {
+      setStartOpen(r.overlay === "start");
+      setTaskView(r.overlay === "overview");
+      wm.syncApps(r.apps);
+    },
+    [wm],
+  );
+  useRouteSync(route, applyRoute);
+
   const api: AppApi = {
     ...props,
     openApp: wm.openApp,
     resetLayout: () => {
       wm.windows.forEach((w) => wm.resetGeom(w.id));
+      // Drop the layout from the URL first — the reload rehydrates from it, and
+      // would otherwise restore the very layout being reset.
+      resetUrlToHome();
       window.location.reload();
     },
   };
