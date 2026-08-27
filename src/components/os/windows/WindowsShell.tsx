@@ -66,30 +66,31 @@ export default function WindowsShell(props: SkinProps) {
     return visible.reduce((a, b) => (a.z > b.z ? a : b)).id;
   }, [wm.windows]);
 
-  // Browser Back/Forward. Opening a window is a navigation, so Back closes the
-  // top one and Forward reopens it where it was (see wm.syncApps). Merely
-  // switching focus between already-open windows is deliberately NOT a history
-  // step: Back would appear to do nothing, and incidental clicks would bury the
-  // exit behind dozens of entries.
-  const openIds = useMemo(
-    () => [...wm.windows].sort((a, b) => a.z - b.z).map((w) => w.id),
-    [wm.windows],
-  );
+  // Browser Back/Forward. On a desktop there is no "previous screen" to pop —
+  // every window is on display at once — so opening or focusing a window is not
+  // a navigation and gets no history entry. It only keeps the URL pointing at
+  // the front-most app, via replaceState, so a link to /projects stays short and
+  // shareable instead of accumulating into /about+resume+projects+...
+  //
+  // The overlays ARE navigations: each covers the whole screen, so Back
+  // dismissing one is a visible step rather than an abrupt exit. Once they're
+  // closed, Back leaves the site, which on a desktop is what it should mean.
   const route: Route = {
-    apps: openIds,
+    apps: focusedId ? [focusedId] : [],
     overlay: startOpen ? "start" : taskView ? "overview" : null,
     split: null,
     splitPick: null,
   };
-  const applyRoute = useCallback(
-    (r: Route) => {
-      setStartOpen(r.overlay === "start");
-      setTaskView(r.overlay === "overview");
-      wm.syncApps(r.apps);
-    },
-    [wm],
-  );
-  useRouteSync(route, applyRoute);
+  const applyRoute = useCallback((r: Route) => {
+    setStartOpen(r.overlay === "start");
+    setTaskView(r.overlay === "overview");
+    // r.apps is deliberately ignored: windows aren't history state, so Back must
+    // never open or close one.
+  }, []);
+  useRouteSync(route, applyRoute, {
+    push: (prev, next) => prev.overlay !== next.overlay,
+    unwind: (prev, next) => !!prev.overlay && !next.overlay,
+  });
 
   const api: AppApi = {
     ...props,

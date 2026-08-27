@@ -66,22 +66,18 @@ export default function HomeScreen({ onOpen, onSearch }: Props) {
   );
 }
 
-/* A 2×2 widget in the Contacts/"person" idiom: monogram, name, role. Takes the
-   left slot where iOS puts Weather. */
+/* A 2×2 widget in the Photos "Memories" idiom: the picture runs edge to edge
+   and the title sits on a scrim over its foot. Takes the left slot where iOS
+   puts Weather. */
 function ProfileWidget() {
-  const initials = profile.name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("");
-
   return (
     <div className="ios-widget ios-widget-profile">
-      <div className="ios-widget-avatar" aria-hidden="true">
-        {initials}
+      {/* Decorative: the name it would announce is right below it in text. */}
+      <img className="ios-widget-photo" src="/profile.jpg" alt="" />
+      <div className="ios-widget-caption">
+        <div className="ios-widget-name">{profile.name}</div>
+        <div className="ios-widget-role">{profile.role}</div>
       </div>
-      <div className="ios-widget-name">{profile.name}</div>
-      <div className="ios-widget-role">{profile.role}</div>
     </div>
   );
 }

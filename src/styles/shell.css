@@ -21,14 +21,14 @@
   top: max(14px, env(safe-area-inset-top));
   right: max(14px, env(safe-area-inset-right));
   z-index: 999;
-  padding: 8px 14px;
+  padding: 5px 11px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 999px;
   background: rgba(20, 20, 22, 0.68);
   backdrop-filter: blur(16px) saturate(1.4);
   color: #fff;
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -1363,8 +1363,11 @@
     filter var(--dur-slow) var(--ease-out);
 }
 /* As an app opens, the home screen recedes and dims behind it — the depth cue
-   real iOS gives you. `:has()` flips the moment the app view mounts. */
-.ios-screen:has(.ios-appview):not(.closing) .ios-home {
+   real iOS gives you. Driven by a class rather than :has(.ios-appview): every
+   app you open stays mounted in the deck, so the app view's presence no longer
+   means one is on screen. `peek` is a live swipe-up, which uncovers home the
+   moment the card starts lifting. */
+.ios-screen.app-open:not(.closing):not(.peek) .ios-home {
   transform: scale(1.12);
   opacity: 0;
   filter: blur(3px);
@@ -1388,44 +1391,46 @@
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
 }
 
-/* Profile — tinted glass, white text, in the Weather widget's slot and idiom. */
+/* Profile — the Photos widget's idiom: picture edge to edge, title over its
+   foot. No glass, no padding; the photo is the widget's surface. */
 .ios-widget-profile {
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(24px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.24);
+  position: relative;
+  padding: 0;
+  background: #1c1c1e; /* shows only until the photo decodes */
   color: #fff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
-/* Reduce Transparency: a solid systemGray keeps the white text legible in both
-   themes (a plain white/black surface would not). */
-@media (prefers-reduced-transparency: reduce) {
-  .ios-widget-profile {
-    background: #3a3a3c;
-    backdrop-filter: none;
-  }
+.ios-widget-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* The portrait is 4:5 and the widget is square, so a fifth of the height has
+     to go. Anchoring to the bottom keeps the chin clear of the caption —
+     centring it drops the beard straight into the text. */
+  object-position: center bottom;
 }
-.ios-widget-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  display: grid;
-  place-items: center;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  margin-bottom: auto;
+.ios-widget-caption {
+  position: relative;
+  margin-top: auto;
+  padding: 40px 13px 13px;
+  /* Long enough a fade that the type never sits on a visible edge. */
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(0, 0, 0, 0.42) 30%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 .ios-widget-name {
   font-size: 16px;
   font-weight: 600;
-  line-height: 1.2;
-  margin-top: 8px;
+  line-height: 1.18;
 }
 .ios-widget-role {
-  font-size: 12.5px;
-  opacity: 0.9;
+  font-size: 12px;
+  opacity: 0.92;
   margin-top: 3px;
 }
 
@@ -1575,8 +1580,12 @@
   gap: 0;
 }
 
-/* The home indicator sits over the dock on the home screen. Decorative here —
-   the interactive one lives in the app view, where it means "back to home". */
+/* The home indicator sits over the dock on the home screen. The real,
+   draggable bar (owned by IOSShell) is drawn on top of this one any time
+   Spotlight is down, so this pill only ever paints behind Spotlight. */
+.ios-screen:not(:has(.ios-spotlight)) .ios-home-bar::after {
+  opacity: 0;
+}
 .ios-home-bar {
   height: var(--home-ind-h);
   display: grid;
@@ -1594,7 +1603,7 @@
 /* ---- Spotlight ---- */
 /* Opening search pushes the home screen back and blurs it — the same depth cue
    as opening an app, except the home screen stays visible behind the results
-   instead of being replaced. Can't collide with the .ios-appview rule above:
+   instead of being replaced. Can't collide with the .app-open rule above:
    choosing a result closes Spotlight and opens the app in one commit. */
 .ios-screen:has(.ios-spotlight) .ios-home {
   transform: scale(1.06);
@@ -1808,6 +1817,57 @@
   color: rgba(255, 255, 255, 0.75);
 }
 
+/* ---- the open-app deck ----
+   Every app you open stays mounted here, side by side in one row, and the deck
+   slides horizontally so exactly one of them fills the screen. That's what lets
+   the home-bar swipe move between apps: the app you swipe away is still alive,
+   still scrolled where you left it. Slot ORDER in the DOM never changes — each
+   slot's place in the row is a transform — because moving a node would reset
+   the scroll position the whole arrangement exists to preserve. */
+/* The App Switcher's backdrop: everything behind the lifted row — wallpaper,
+   icons, dock — frosted in one pass. IOSShell fades it in with the gesture. */
+.ios-switch-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 39;
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(26px) saturate(1.3);
+}
+
+.ios-deck {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  /* The row's live geometry, written by IOSShell as the home bar lifts it: the
+     space between cards, and the corner they round to. Both arrive already
+     divided by the row's scale, so they land at their authored size on screen. */
+  --deck-gap: 0px;
+  --card-radius: 0px;
+  /* The deck spans the whole screen and never unmounts, so it would otherwise
+     sit over the home screen eating every tap. Only the slots take pointer
+     events, and a hidden slot takes none. */
+  pointer-events: none;
+}
+.ios-deck-slot {
+  position: absolute;
+  inset: 0;
+  /* Place in the row (--pos, set per slot) times one screen plus the current
+     gap. At rest the gap is zero, so the slots tile edge to edge and exactly
+     one of them fills the screen. */
+  transform: translateX(calc(var(--pos, 0) * (100% + var(--deck-gap))));
+  /* Off-screen apps are kept out of the paint (and out of hit-testing) without
+     unmounting them. `is-moving` is set for the length of a swipe or slide, when
+     the neighbours genuinely need to be visible. */
+  visibility: hidden;
+}
+.ios-deck-slot.is-active,
+.ios-deck.is-moving .ios-deck-slot {
+  visibility: visible;
+  pointer-events: auto;
+}
+
 /* fullscreen app */
 .ios-appview {
   position: absolute;
@@ -1815,9 +1875,17 @@
   background: var(--surface-solid);
   display: flex;
   flex-direction: column;
-  z-index: 40;
-  /* Open/close is driven imperatively from IOSShell (origin-zoom out of the
-     tapped icon); see src/shell/originZoom.ts. */
+  /* Rounds off under the finger as the swipe-up lifts the row into cards;
+     overflow is clipped so the app's own chrome follows that corner. */
+  border-radius: var(--card-radius, 0px);
+  overflow: hidden;
+  transition: border-radius 200ms var(--ease-out);
+  /* Open/close/drag is driven imperatively from IOSShell (origin-zoom out of
+     the tapped icon); see src/shell/originZoom.ts. */
+}
+.ios-deck.switching .ios-appview {
+  transition: none; /* the radius is rewritten every frame; don't chase it */
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.5);
 }
 .ios-navbar {
   /* iOS 26 nav bar: a translucent Liquid Glass strip that the app content
@@ -1885,6 +1953,11 @@
   background: var(--surface-solid);
   -webkit-overflow-scrolling: touch;
 }
+/* The home bar: one per screen, owned by IOSShell, because its swipe moves
+   BETWEEN apps and so can't belong to any single one. Drag it up to send the
+   current app back to the deck, sideways to move along the deck, or tap it.
+   touch-action: none is what stops the browser claiming the drag as a scroll
+   or a pull-to-refresh before the gesture is recognised. */
 .ios-home-indicator {
   position: absolute;
   bottom: 0;
@@ -1895,8 +1968,13 @@
   background: transparent;
   display: grid;
   place-items: center;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
   z-index: 45;
+}
+.ios-home-indicator:active {
+  cursor: grabbing;
 }
 .ios-home-indicator span {
   width: 140px;
@@ -1904,6 +1982,25 @@
   border-radius: 3px;
   background: var(--text);
   opacity: 0.5;
+  transition: opacity 160ms var(--ease-out);
+}
+/* On the home screen the bar sits straight on the wallpaper, so it takes the
+   dock's white rather than the app view's text colour. */
+.ios-screen:not(.app-open) .ios-home-indicator span {
+  background: rgba(255, 255, 255, 0.85);
+  opacity: 1;
+}
+/* iOS hides the bar once the card is off the ground — the gesture continues to
+   work, it just stops drawing a line the app is no longer sitting on. */
+.ios-screen.peek .ios-home-indicator span {
+  opacity: 0;
+}
+/* Keyboard users get the same reach: the bar is a real button, and takes
+   ArrowLeft/ArrowRight to move along the deck. */
+.ios-home-indicator:focus-visible span {
+  opacity: 0.9;
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
 }
 
 /* ============================================================
@@ -1934,6 +2031,10 @@
   position: relative;
   flex: 1 1 auto;
   overflow: hidden;
+  /* Empty space where the drawn status bar used to sit — kept so home/app/
+     etc. (all `inset: 0` within this) sit at the same height as before,
+     just with nothing rendered in it now that the real one shows through. */
+  padding-top: var(--statusbar-h);
 }
 
 /* home */
@@ -1993,84 +2094,72 @@
   grid-template-columns: 1.12fr 1fr;
   gap: 12px;
 }
+/* Photo widget — the picture is the card's surface, name and role on a scrim
+   over its foot, matching the iOS home. The row below is sized so the face
+   clears the caption; see .and-pill's min-height. */
 .and-status {
+  position: relative;
+  overflow: hidden;
+  /* Sets the widget row's height, and with it the gap between the two pills
+     beside it (168 - 2x72 = 24px). Short enough that the caption now rides up
+     onto the beard: deliberate — a smaller card was worth more than a clear chin. */
+  min-height: 168px;
   display: flex;
   flex-direction: column;
   border-radius: 26px;
-  padding: 16px 16px 15px;
   color: #fff;
-  background: linear-gradient(158deg, #6773c6 0%, #4e5aa8 52%, #3d4a86 100%);
+  background: #23252b; /* shows only until the photo decodes */
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.26);
 }
-.and-status-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.and-status-head {
-  font-size: 26px;
-  font-weight: 700;
-  line-height: 1;
-}
-.and-status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
-}
-.and-status-dot.is-open {
-  background: #4ade80;
-  box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.28);
-}
-.and-status-desc {
-  margin-top: 5px;
-  font-size: 12.5px;
-  opacity: 0.95;
-}
-.and-status-graph {
-  position: relative;
-  height: 3px;
-  margin-top: auto;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.24);
-}
-.and-status-graph::before {
-  content: "";
+.and-status-photo {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: -11px;
-  border-top: 1px solid rgba(255, 255, 255, 0.16);
-}
-.and-status-bar {
-  position: absolute;
-  left: 0;
-  top: 0;
+  inset: 0;
+  width: 100%;
   height: 100%;
-  width: 42%;
-  border-radius: 2px;
-  background: #8fd0ff;
+  object-fit: cover;
+  /* The portrait is 4:5 in a landscape-ish card, so a third of the height is
+     cropped. 66% keeps the eyes in the upper half and lets the crop take the
+     hair from the top rather than the shirt from the bottom. */
+  object-position: center 66%;
 }
-.and-status-scale {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 5px;
-  font-size: 10px;
-  opacity: 0.8;
+.and-status-caption {
+  position: relative;
+  margin-top: auto;
+  padding: 26px 14px 10px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(0, 0, 0, 0.42) 32%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+/* Smaller than the iOS widget's 16px: this card is shorter, and every pixel
+   the caption takes is a pixel of face it covers. */
+.and-status-name {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.18;
 }
 .and-status-role {
-  margin-top: 6px;
-  font-size: 13px;
-  font-weight: 500;
+  margin-top: 2px;
+  font-size: 10.5px;
+  opacity: 0.92;
 }
 .and-widget-col {
   display: flex;
   flex-direction: column;
+  /* The pills keep their own height and the column's spare height falls
+     between them, so the greeting artwork is never stretched to fill a row
+     sized by the photo card beside it. */
+  justify-content: space-between;
   gap: 12px;
 }
 .and-pill {
-  flex: 1 1 0;
-  min-height: 72px;
+  /* One source of truth for the pill height: the Start widget scales its
+     lettering and its artwork off this same number. */
+  --and-pill-h: 72px;
+  flex: 0 0 var(--and-pill-h);
   border: 0;
   border-radius: 36px;
   display: flex;
@@ -2081,20 +2170,116 @@
   color: #1b1a16;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.24);
 }
+/* The greeting pill is a little window on the sky. Four layers stack inside
+   it, back to front: the daytime sun illustration, a dusk tint multiplied over
+   it, and the moon illustration. `--greet-dim`
+   and `--greet-night` come from the clock in AndroidHome and move minute by
+   minute, so the sun warms down into a sunset and the moon dissolves in over
+   it, rather than three fixed pictures swapping abruptly. */
 .and-pill-greet {
+  position: relative;
+  overflow: hidden;
+  /* Keeps the dusk layer's multiply blending inside the pill, off the wallpaper. */
+  isolation: isolate;
   font-size: 15px;
   white-space: nowrap;
+  /* Shows only while the artwork loads, and behind its transparent edges. */
   background: linear-gradient(105deg, #f3ef98 0%, #ddf0a0 55%, #c6edb4 100%);
+  --greet-dim: 0;
+  --greet-night: 0;
 }
+.and-greet-sky {
+  position: absolute;
+  inset: 0;
+  background-position: 7% center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  /* One second of travel smooths the per-second clock ticks into a glide. */
+  transition: opacity 1s linear, filter 1s linear;
+}
+.and-greet-day {
+  background-image: url("/greet/greet-day.webp");
+  /* Dusk deepens the art's own colours; the tint layer below does the rest. */
+  filter: saturate(calc(1 + 0.35 * var(--greet-dim)));
+}
+/* Sunset. No filter chain can turn a blue sky orange — hue-rotate would drag
+   the sun around with it — so the dusk sky is a gradient multiplied over the
+   day art: deep blue overhead grading to amber at the horizon, which darkens
+   and tints in one pass. At --greet-dim: 0 it is fully transparent, so the
+   midday sky is untouched. */
+.and-greet-dusk {
+  background-image: linear-gradient(180deg, #263274 0%, #be4e68 45%, #ff9240 100%);
+  mix-blend-mode: multiply;
+  opacity: calc(0.82 * var(--greet-dim));
+}
+.and-greet-night-sky {
+  background-image: url("/greet/greet-night.webp");
+  opacity: var(--greet-night);
+}
+/* The greeting is spoken, not shown: the artwork carries the time of day, and
+   at this size any text sat on top of the sun or the moon. */
+.and-greet-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+/* Viewers who ask for less motion still get the right sky, just no gliding. */
+@media (prefers-reduced-motion: reduce) {
+  .and-greet-sky {
+    transition: none;
+  }
+}
+/* Start widget. The ring artwork and the word are separate layers: the rings
+   are vector paths anchored to the pill's right edge, the word is real text on
+   the left, and the black space between them is simply the pill. That split is
+   what lets the widget be wider than the source art without stretching it, and
+   what keeps the lettering crisp at any zoom. */
 .and-pill-start {
-  justify-content: space-between;
-  padding: 0 18px;
+  /* Both children are positioned against this box, and the rings run past its
+     right and lower edges the way they do in the source art — the pill's own
+     radius crops them. */
+  position: relative;
+  overflow: hidden;
+  padding: 0;
   cursor: pointer;
   background: rgba(214, 214, 216, 0.94);
 }
-.and-pill-mark {
-  flex: 0 0 auto;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+[data-theme="dark"] .and-pill-start {
+  background: #0d0d0d;
+}
+.and-start-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* Nothing here reacts to the pointer; the button underneath takes the tap. */
+  pointer-events: none;
+}
+/* Positioned rather than laid out, so the word keeps its distance from the
+   left edge whatever the column width does, and never reflows around the art.
+   The ratios are the source artwork's own measurements over its 270px height:
+   a 64px type size and a 57px left inset, less the S's side bearing. */
+.and-start-label {
+  position: absolute;
+  left: calc(var(--and-pill-h) * 0.206);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: calc(var(--and-pill-h) * 0.237);
+  /* The source lettering is a bold grotesque set slightly tight; Inter Bold at
+     these metrics sits on top of it. */
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: #1b1a16;
+}
+[data-theme="dark"] .and-start-label {
+  color: #e9e9eb;
 }
 
 /* ---- Finder search bar (home, pinned bottom) ---- */
@@ -2268,13 +2453,22 @@
 .and-screen.mode-split .and-nav-btn {
   color: var(--text);
 }
-/* Search is One UI's frosted "Finder" surface — the nav strip stays
-   transparent so the blurred backdrop shows through it (no opaque black
-   band breaking the glass), white icons over it. */
-.and-screen.mode-search .and-navbar {
-  background: transparent;
+/* Recents and Search are full-screen scrims, but they live inside .and-stage,
+   which stops at the top of the nav bar — so the strip showed raw wallpaper
+   under a blurred screen. Each mode gives the nav bar its own overlay's tint and
+   blur (the same values as .and-recents / .and-search-screen) so the two read as
+   one continuous surface instead of a band cut out of it. */
+.and-screen.mode-overview .and-navbar {
+  background: rgba(10, 10, 12, 0.5);
+  backdrop-filter: blur(30px) saturate(1.2);
   border-top: 0;
 }
+.and-screen.mode-search .and-navbar {
+  background: rgba(14, 14, 17, 0.55);
+  backdrop-filter: blur(34px) saturate(1.3);
+  border-top: 0;
+}
+.and-screen.mode-overview .and-nav-btn,
 .and-screen.mode-search .and-nav-btn {
   color: #fff;
 }

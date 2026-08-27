@@ -25,7 +25,7 @@ export interface ZoomOpts {
   easing: string;
 }
 
-function prefersReducedMotion(): boolean {
+export function prefersReducedMotion(): boolean {
   return (
     typeof window !== "undefined" &&
     !!window.matchMedia &&
@@ -64,6 +64,25 @@ function collapsedTransform(el: HTMLElement, box: Box): string {
   const tx = box.left - r.left;
   const ty = box.top - r.top;
   return `translate(${tx}px, ${ty}px) scale(${sx}, ${sy})`;
+}
+
+// The natural, untransformed frame. Every transform in this module — the
+// collapsed one above, the rect one below — is expressed with
+// transform-origin: 0 0, so any two of them can be the endpoints of one
+// animation without the origin shifting mid-flight.
+export const IDENTITY = "translate(0px, 0px) scale(1, 1)";
+
+/**
+ * The transform that maps `from` onto `to`, both measured in screen
+ * coordinates. The home-bar swipe scales the whole app row down as one layer,
+ * so when a card peels off to be closed on its own it needs a starting frame
+ * that puts it exactly where the row had it — this builds that frame from the
+ * two rects instead of re-deriving the row's maths.
+ */
+export function rectTransform(from: Box, to: Box): string {
+  const sx = to.width / from.width;
+  const sy = to.height / from.height;
+  return `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${sx}, ${sy})`;
 }
 
 function clearInline(el: HTMLElement) {
@@ -110,15 +129,22 @@ export function zoomIn(el: HTMLElement, from: Box, opts: ZoomOpts): Promise<void
  * blinks back to full size before the caller unmounts it — the caller flips its
  * React state to remove the element once this resolves.
  */
-export function zoomOut(el: HTMLElement, to: Box, opts: ZoomOpts): Promise<void> {
-  if (prefersReducedMotion()) return Promise.resolve();
+export function zoomOut(el: HTMLElement, to: Box, opts: ZoomOpts, from = IDENTITY): Promise<void> {
+  if (prefersReducedMotion()) {
+    clearInline(el);
+    return Promise.resolve();
+  }
   el.getAnimations().forEach((a) => a.cancel());
+  // `from` may be a half-finished drag, in which case the element still carries
+  // that inline transform. Clear it before measuring so `collapsed` is computed
+  // against the natural rect; no paint can happen between here and animate().
+  el.style.transform = "";
   const collapsed = collapsedTransform(el, to);
   el.style.transformOrigin = "0 0";
   el.style.willChange = "transform, opacity";
   const anim = el.animate(
     [
-      { transform: "translate(0px, 0px) scale(1, 1)", opacity: 1, offset: 0 },
+      { transform: from, opacity: 1, offset: 0 },
       { opacity: 1, offset: 0.68 }, // stay opaque most of the way, fade at the very end
       { transform: collapsed, opacity: 0, offset: 1 },
     ],

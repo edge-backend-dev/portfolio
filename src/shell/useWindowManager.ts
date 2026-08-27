@@ -114,25 +114,6 @@ export function useWindowManager(area: WorkArea, initialIds: string[] = []) {
     setWindows((prev) => prev.filter((w) => w.id !== id));
   }, []);
 
-  // Reconciles the open windows to `ids` (z-order, last = focused). This is the
-  // browser Back/Forward path: it deliberately does NOT clearGeom the windows it
-  // drops, because that close is undoable with Forward, which has to bring the
-  // window back where it was — unlike closeApp above, which is a deliberate
-  // "I'm done with this" and resets it.
-  const syncApps = useCallback((ids: string[]) => {
-    setWindows((prev) => {
-      let z = zTop.current;
-      const next = ids.map((id, i) => {
-        const existing = prev.find((w) => w.id === id);
-        return existing
-          ? { ...existing, minimized: false, z: ++z }
-          : makeWindow(id, i, ++z, areaRef.current);
-      });
-      zTop.current = z;
-      return next;
-    });
-  }, []);
-
   const minimizeApp = useCallback((id: string) => {
     setWindows((prev) => prev.map((w) => (w.id === id ? { ...w, minimized: true } : w)));
   }, []);
@@ -289,7 +270,6 @@ export function useWindowManager(area: WorkArea, initialIds: string[] = []) {
     windows,
     openApp,
     closeApp,
-    syncApps,
     minimizeApp,
     toggleMaximize,
     toggleFullscreen,

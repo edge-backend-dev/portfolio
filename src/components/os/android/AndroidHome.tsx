@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { apps } from "../../../data/apps";
 import { profile } from "../../../data/profile";
 import { AppIcon } from "../../apps/AppIcon";
+import StartMark from "./StartMark";
 
 interface Props {
   onOpen: (id: string, from: HTMLElement) => void;
@@ -14,7 +16,7 @@ const DOCK_IDS = ["about", "projects", "contact", "settings"];
 
 export default function AndroidHome({ onOpen, onSearch }: Props) {
   const now = useClock();
-  const open = profile.availability.open;
+  const sky = skyPhase(now);
   const gridApps = apps.filter((a) => !DOCK_IDS.includes(a.id));
   const dockApps = DOCK_IDS.map((id) => apps.find((a) => a.id === id)!).filter(Boolean);
 
@@ -38,45 +40,45 @@ export default function AndroidHome({ onOpen, onSearch }: Props) {
         {/* Availability + greeting + Start — the One UI widget cluster, with the
             weather slot repurposed to a live portfolio status card. */}
         <div className="and-widget-row">
+          {/* Photo widget in the Photos idiom, the same card the iOS home
+              carries. It used to show availability over an invented progress
+              bar; that reading belongs in About Me and Contact, where a
+              visitor can act on it, not in a widget that cannot. */}
           <div className="and-status">
-            <div className="and-status-top">
-              <span className="and-status-head">{open ? "Open" : "Booked"}</span>
-              <span className={`and-status-dot${open ? " is-open" : ""}`} aria-hidden="true" />
+            {/* Decorative: the name it would announce is right below it. */}
+            <img className="and-status-photo" src="/profile.jpg" alt="" />
+            <div className="and-status-caption">
+              <div className="and-status-name">{profile.name}</div>
+              <div className="and-status-role">{profile.role}</div>
             </div>
-            <div className="and-status-desc">
-              {open ? "Available for select projects" : "Currently at capacity"}
-            </div>
-            <div className="and-status-graph" aria-hidden="true">
-              <span className="and-status-bar" />
-            </div>
-            <div className="and-status-scale">
-              <span>1 wk</span>
-              <span>3 wks</span>
-            </div>
-            <div className="and-status-role">{profile.role}</div>
           </div>
 
           <div className="and-widget-col">
-            <div className="and-pill and-pill-greet">{greeting(now)}</div>
+            <div
+              className="and-pill and-pill-greet"
+              style={
+                {
+                  "--greet-dim": sky.dim,
+                  "--greet-night": sky.night,
+                } as CSSProperties
+              }
+            >
+              <span className="and-greet-sky and-greet-day" aria-hidden="true" />
+              <span className="and-greet-sky and-greet-dusk" aria-hidden="true" />
+              <span className="and-greet-sky and-greet-night-sky" aria-hidden="true" />
+              {/* The picture says what time it is; the words only covered it.
+                  Kept for screen readers, which get nothing from the artwork. */}
+              <span className="and-greet-sr">{greeting(now)}</span>
+            </div>
             <button
               className="and-pill and-pill-start"
               onClick={(e) => onOpen("about", e.currentTarget)}
               aria-label="Start — open About Me"
             >
-              <span>Start</span>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="and-pill-mark">
-                <path
-                  d="M12 20s-7-4.35-7-9.5A3.5 3.5 0 0 1 12 8a3.5 3.5 0 0 1 7 2.5C19 15.65 12 20 12 20Z"
-                  fill="url(#and-heart)"
-                />
-                <defs>
-                  <linearGradient id="and-heart" x1="5" y1="6" x2="19" y2="20" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#33d17a" />
-                    <stop offset="0.5" stopColor="#3584e4" />
-                    <stop offset="1" stopColor="#e05fd0" />
-                  </linearGradient>
-                </defs>
-              </svg>
+              {/* Live text, not the lettering baked into the source artwork,
+                  so the word stays sharp at any zoom or pixel density. */}
+              <span className="and-start-label">Start</span>
+              <StartMark />
             </button>
           </div>
         </div>
@@ -147,10 +149,33 @@ function useClock(): Date {
 }
 
 // Time-of-day greeting on the viewer's own clock: 2pm → "Good afternoon".
+// There is deliberately no "Good night": that is a parting phrase, so it reads
+// as "goodbye" to someone who just arrived. "Good evening" carries the whole
+// stretch after sunset — the artwork behind the pill shows the hour instead.
 function greeting(d: Date): string {
   const h = d.getHours();
   if (h >= 5 && h < 12) return "Good morning";
   if (h >= 12 && h < 17) return "Good afternoon";
-  if (h >= 17 && h < 21) return "Good evening";
-  return "Good night";
+  return "Good evening";
+}
+
+// Fraction of the way from `a` to `b` that `t` sits, clamped to 0–1.
+function ramp(t: number, a: number, b: number): number {
+  return Math.min(1, Math.max(0, (t - a) / (b - a)));
+}
+
+// The two dials the greeting pill's artwork rides on, both continuous so the
+// sky slides through sunset rather than snapping between three pictures:
+//   dim   — how far the bright sun illustration is dimmed toward sunset
+//   night — how far the moon illustration has faded in over it
+// Decimal hours, so 18:30 is 18.5 and the move is minute-by-minute.
+function skyPhase(d: Date): { dim: number; night: number } {
+  const t = d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
+  // Twilight: burns off after 05:30, returns from 16:30, and holds overnight.
+  // Dawn needs it as much as dusk does — the moon has to dissolve against a
+  // dark sky at both ends, or sunrise just looks like a washed-out noon.
+  const dim = t < 5.5 ? 1 : t < 7 ? 1 - ramp(t, 5.5, 7) : ramp(t, 16.5, 20);
+  // Moon rises from 19:45, holds all night, and is gone by 06:00.
+  const night = t < 7 ? 1 - ramp(t, 4.8, 6) : ramp(t, 19.75, 21);
+  return { dim, night };
 }

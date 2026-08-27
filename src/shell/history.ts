@@ -122,20 +122,55 @@ function safeNavigate(url: string, replace: boolean): void {
 // slowest close animation (the ~400ms iOS zoom, the macOS genie).
 const SETTLE_MS = 1200;
 
+export interface RouteSyncOpts {
+  /**
+   * Which route changes are real navigations (pushState) rather than the URL
+   * just keeping up with the screen (replaceState). Defaults to "all of them",
+   * which is what the mobile skins want: there, every step IS a screen change.
+   *
+   * The desktop skins pass a narrower rule — see the comment on their route.
+   */
+  push?: (prev: Route, next: Route) => boolean;
+  /**
+   * Which changes UNDO the entry we last pushed, and so should step back rather
+   * than push a new one. Dismissing an overlay is the case: without this,
+   * opening and closing Spotlight twice leaves four entries and buries the exit
+   * behind four Back presses.
+   *
+   * Only honoured for entries this hook actually pushed, so a visitor who landed
+   * directly on /about/spotlight is never stepped off the site.
+   */
+  unwind?: (prev: Route, next: Route) => boolean;
+}
+
 /**
  * Mirrors `route` into the address bar and turns Back/Forward into applyRoute().
  *
- * Push policy: every distinct route change pushes. Deliberately NOT depth-based
- * — collapsing "going shallower" into a replaceState leaves dead entries in the
+ * Where a change does push, it always pushes — deliberately NOT depth-based.
+ * Collapsing "going shallower" into a replaceState leaves dead entries in the
  * stack where Back visibly does nothing, which is a worse failure than a history
- * stack that grows honestly. Consecutive entries here always differ.
+ * stack that grows honestly.
  */
-export function useRouteSync(route: Route, applyRoute: (r: Route) => void): void {
+export function useRouteSync(
+  route: Route,
+  applyRoute: (r: Route) => void,
+  opts: RouteSyncOpts = {},
+): void {
   const url = formatRoute(route, currentSearch());
 
   // Latest applyRoute without re-binding the popstate listener each render.
   const applyRef = useRef(applyRoute);
   applyRef.current = applyRoute;
+  const pushRef = useRef(opts.push);
+  pushRef.current = opts.push;
+  const unwindRef = useRef(opts.unwind);
+  unwindRef.current = opts.unwind;
+  // How many entries this hook has pushed and not yet stepped back off. Guards
+  // unwind against walking off the entries that were already there when we
+  // arrived — those belong to wherever the visitor came from.
+  const owned = useRef(0);
+  // The route behind the URL we last wrote, so `push` can compare against it.
+  const lastRoute = useRef<Route | null>(null);
 
   // The URL we believe the address bar currently shows.
   const last = useRef<string | null>(null);
@@ -151,6 +186,8 @@ export function useRouteSync(route: Route, applyRoute: (r: Route) => void): void
       const targetUrl = formatRoute(target, window.location.search);
       pending.current = targetUrl;
       last.current = targetUrl;
+      lastRoute.current = target;
+      if (owned.current > 0) owned.current--;
 
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => {
@@ -174,6 +211,7 @@ export function useRouteSync(route: Route, applyRoute: (r: Route) => void): void
     // so a cold load doesn't spend an extra entry on itself.
     if (last.current === null) {
       last.current = url;
+      lastRoute.current = route;
       safeNavigate(url, true);
       return;
     }
@@ -189,8 +227,26 @@ export function useRouteSync(route: Route, applyRoute: (r: Route) => void): void
     }
 
     if (url === last.current) return;
+
+    const prev = lastRoute.current;
+
+    // Undoing our own last entry: step back onto it rather than stack another.
+    // popstate then lands us here with the state already correct, so applyRoute
+    // is a no-op and the pending latch clears immediately.
+    if (prev && owned.current > 0 && unwindRef.current?.(prev, route)) {
+      try {
+        window.history.back();
+        return;
+      } catch {
+        /* fall through to a normal push */
+      }
+    }
+
+    const isNav = !pushRef.current || !prev || pushRef.current(prev, route);
     last.current = url;
-    safeNavigate(url, false);
+    lastRoute.current = route;
+    if (isNav) owned.current++;
+    safeNavigate(url, !isNav);
   }, [url]);
 }
 

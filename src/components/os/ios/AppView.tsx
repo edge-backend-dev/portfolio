@@ -9,6 +9,9 @@ interface Props {
   onHome: () => void;
 }
 
+// One open app. The home indicator is NOT drawn here — there's one bar for the
+// whole screen, owned by IOSShell, because its swipe moves between apps and so
+// can't belong to any single one of them.
 export default function AppView({ meta, api, onHome }: Props) {
   return (
     <div className="ios-appview" role="dialog" aria-label={meta.title}>
@@ -29,10 +32,6 @@ export default function AppView({ meta, api, onHome }: Props) {
       <div className="ios-appscroll">
         <AppContent id={meta.id} api={api} />
       </div>
-
-      <button className="ios-home-indicator" onClick={onHome} aria-label="Home">
-        <span />
-      </button>
     </div>
   );
 }

@@ -55,11 +55,11 @@
   --accent-hover: #1a84f0;
   --accent-text: #ffffff;
 
-  /* One UI dark home wallpaper: near-black with a soft warm vignette glow.
-     The launcher chrome (white icons/text) is designed to sit over this in
-     both light and dark UI themes, the way a phone wallpaper is independent
-     of the system theme. */
-  --desktop: radial-gradient(125% 90% at 50% 40%, #3a332e 0%, #241f1c 38%, #14100e 68%, #0a0807 100%);
+  /* Coastal sunset home wallpaper. The launcher chrome (white icons/text) is
+     designed to sit over this in both light and dark UI themes, the way a
+     phone wallpaper is independent of the system theme — so the dark block
+     below repeats it unchanged. */
+  --desktop: url("/wallpapers/coast-sunset.webp") center / cover no-repeat;
 
   --surface: #ffffff;
   --surface-solid: #ffffff;
@@ -90,7 +90,7 @@
   --accent-hover: #6fb4ff;
   --accent-text: #002744;
 
-  --desktop: radial-gradient(125% 90% at 50% 40%, #3a332e 0%, #241f1c 38%, #14100e 68%, #0a0807 100%);
+  --desktop: url("/wallpapers/coast-sunset.webp") center / cover no-repeat;
 
   --surface: #1c1e22;
   --surface-solid: #121316;
@@ -118,7 +118,7 @@
   --accent-hover: #0a84ff;
   --accent-text: #ffffff;
 
-  --desktop: url("/wallpapers/ios16.svg") center / cover no-repeat;
+  --desktop: url("/wallpapers/coast-sunset.webp") center / cover no-repeat;
 
   --surface: #ffffff;
   --surface-solid: #ffffff;
@@ -150,7 +150,7 @@
 
   /* Same wallpaper — iOS dims it for dark mode rather than swapping it. */
   --desktop: linear-gradient(rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.42)),
-    url("/wallpapers/ios16.svg") center / cover no-repeat;
+    url("/wallpapers/coast-sunset.webp") center / cover no-repeat;
 
   --surface: #1c1c1e;
   --surface-solid: #000000;
