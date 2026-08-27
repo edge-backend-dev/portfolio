@@ -55,36 +55,200 @@ const MAX_OPEN = 8;
 const AXIS_LOCK = 8; // px of travel before the gesture picks an axis
 const SWITCH_DISTANCE = 0.22;
 const SWITCH_VELOCITY = 0.4;
-const HOME_DISTANCE = 0.11;
-const HOME_VELOCITY = 0.28;
-// Those two fractions are of the card HEIGHT, and that is where they went
-// wrong: a desktop window is half again as tall as a phone, so the same 11%
-// became a drag nobody would make with a mouse. Everything vertical is
-// measured against a phone-sized height instead, capped here — the gesture
-// then costs the same travel whatever the window is. (The sideways swipe
-// never had the problem: it is measured against the width, and .ios-screen
-// is already capped at 430px.)
+// Home vs. App Switcher is not a distance test. A real iPhone reads the same
+// upward swipe two ways by what the finger does at the END of it: let go while
+// it's still travelling up and you go Home; bring it to a stop first — a hold —
+// and the row stays lifted as the App Switcher. These describe that fork, all
+// as fractions of the card HEIGHT unless noted.
+//   MIN_LIFT      below this the swipe barely happened — fall back to the app.
+//   HOME_FLICK_V  let go still moving up this fast (px/ms) → Home.
+//   PUSH_HOME     shoved up past this much without ever stopping → Home.
+//   PARK_V        at or below this speed (px/ms) the finger counts as parked.
+//   DWELL_MS      parked at least this long before release → App Switcher.
+//   IDLE_MS       no pointer event for this long at release ⇒ finger was still.
+const MIN_LIFT = 0.03;
+const HOME_FLICK_V = 0.15;
+const PUSH_HOME = 0.34;
+const PARK_V = 0.04;
+const DWELL_MS = 100;
+const IDLE_MS = 70;
+// Vertical fractions are measured against a phone-sized height, not the live
+// window: a desktop window is half again as tall as a phone, so the same
+// fraction would otherwise be a drag nobody would make with a mouse. Capped
+// here. (The sideways swipe is fine — it's measured against the width, and
+// .ios-screen is already capped at 430px.)
 const REF_HEIGHT = 760;
-// Real iOS also commits on a plain swipe-up-and-HOLD, well short of
-// HOME_DISTANCE and with no velocity at all — the pause itself is the signal.
-// Cross a much smaller lift, then stop moving for HOLD_MS, and it minimizes
-// exactly as if you'd released past the distance/velocity thresholds above.
+// The hold that opens the switcher WITHOUT waiting for release: lift past
+// HOLD_LIFT, let the finger settle under PARK_V, and after HOLD_MS the row
+// glides up on its own — cards sliding out from under a stationary finger, the
+// way iOS does it.
 const HOLD_LIFT = 0.04;
-const HOLD_MS = 420;
+const HOLD_MS = 240;
 const EDGE_RESIST = 0.3; // drag past the last app and it barely moves
 
 // ---- how the row looks once it's lifted off the screen (the App Switcher) ----
 // Swiping up doesn't shrink the current app on its own: it shrinks the WHOLE
-// row, so the apps either side of it come into view as cards, spaced and
-// rounded, over a blurred home screen. `lift` below runs 0 → 1 with the finger.
-const CARD_SHRINK = 0.3; // how far the row scales down at a full lift
-const CARD_GAP = 14; // on-screen px between neighbouring cards
-const CARD_RADIUS = 38; // on-screen corner radius of a lifted card
+// row, so the apps either side of it come into view as cards receding into a
+// deck over a blurred home screen. `lift` below runs 0 -> 1 with the finger.
+//
+// THE DECK IS A PINHOLE PROJECTION. A card `p` steps from the focus is treated
+// as sitting CARD_SPREAD*p deck-widths across the world and CARD_DEPTH*|p|
+// focal lengths BACK from the camera, so one divisor
+//
+//     q(p) = 1 / (1 + CARD_DEPTH * |p|)
+//
+// carries both halves of what a viewer reads as depth: the card's size is
+// multiplied by q, and its sideways offset is multiplied by the same q. Because
+// a single projection drives both, the row stays self-consistent — each card is
+// smaller than the one in front of it AND its step in from the edge shortens by
+// exactly the amount perspective would shorten it, which is what makes the row
+// read as one stack going back rather than a fan of loose rectangles. It is
+// also symmetric by construction: |p| means a card N steps either side of the
+// focus takes the same shrink and the same offset, so the peek matches on both
+// sides. And because q is smooth in `p`, a scroll that paints a fractional
+// position gets a fractional shrink — cards grow as they come forward instead
+// of popping a size at each card boundary.
+//
+// q's steps shrink as they go back (-12.3%, -8.8%, -6.6%, ... at CARD_DEPTH
+// 0.14) rather than stepping down linearly, which is the falloff a real
+// receding stack has and the reason a linear per-card scale looks wrong.
+//
+// Depth beyond the projection is carried by three things, all interpolated off
+// each card's DISTANCE FROM THE FOCUS (never its raw place in the row):
+//
+//   * z-index — the focused card is frontmost and every other card recedes
+//     behind it. This is what actually orders the deck: DOM order is MOUNT
+//     order (see `mounted`), not row order, so painting back-to-front by
+//     rearranging nodes isn't available — moving a node would throw away the
+//     app's scroll position. The z-index is therefore written per slot on every
+//     frame, from the live fractional distance, so the two cards crossing the
+//     centre swap depth while they're still a half-step apart;
+//   * a dim laid over the card, so a card behind sits in the shadow of the one
+//     in front (a plain opacity fade would make it see-through instead, and the
+//     blurred home screen would show through the app);
+//   * the card's own drop shadow, which separates two overlapping cards.
+const CARD_SHRINK = 0.22; // how far the ROW scales down at a full lift (-> ~78%)
+const CARD_DEPTH = 0.14; // focal lengths a card falls back per step from focus
+// How far the neighbour's inner edge tucks UNDER the focused card, as a
+// fraction of the screen width. This is the number that is actually looked at,
+// so it's the one that's authored; CARD_SPREAD below is solved from it.
+const CARD_TUCK = 0.085;
+// Centre-to-centre step, in PRE-scale deck widths. Solved rather than authored:
+// picking a spread by hand and hoping the peek lands is what makes the row need
+// re-tuning every time the shrink or the depth moves. On screen the focused
+// card has half-width s/2 and the neighbour s*q/2 (s = the row's own scale),
+// and the neighbour's centre sits at s*CARD_SPREAD*q — so asking for its inner
+// edge to land CARD_TUCK inside the focused card's edge,
+//
+//     s*SPREAD*q - s*q/2 = s/2 - CARD_TUCK
+//
+// gives the line below. Change CARD_SHRINK, CARD_DEPTH or CARD_TUCK and the
+// spread re-derives; the peek stays where it was authored.
+const CARD_SPREAD = (() => {
+  const s = 1 - CARD_SHRINK; // the row's own scale at a full lift
+  const q = 1 / (1 + CARD_DEPTH); // the first neighbour's projected size
+  return ((s * (1 + q)) / 2 - CARD_TUCK) / (s * q);
+})();
+const CARD_DIM = 0.1; // how much darker each step back sits, capped below
+const CARD_DIM_MAX = 0.32;
+const CARD_FADE = 0.18; // opacity lost per card of distance past the first
+// The deck stays out of sight until the card being lifted has very nearly
+// become one. On a real iPhone the app you are dismissing holds the screen on
+// its own for most of the swipe and the rest of the row only arrives as it
+// lands — reveal it with the lift and the neighbours are already showing at the
+// halfway point, which reads as the switcher opening early rather than as the
+// app going away. Everything but the focused card is therefore held off until
+// the lift passes CARD_REVEAL and eased in over what is left, so a swipe that
+// is abandoned partway never shows the row at all.
+const CARD_REVEAL = 0.72;
+// How far outside its place a held-off card waits, in deck widths: they slide
+// in from the edges as they appear instead of fading up where they will sit.
+const CARD_ENTER = 0.16;
+const CARD_Z = 1000; // z-index of the focused card; the rest step down from here
+const CARD_RADIUS = 44; // on-screen corner radius of a lifted card
+const CARD_RADIUS_MAX = 0.11; // ...capped to this fraction of the deck's width,
+//                               so a narrow window doesn't get an over-rounded
+//                               card — a real device's corner scales with it
 const LIFT_FULL = 0.22; // travel, as a fraction of card height, that reads as a full lift
-const LIFT_RISE = 0.05; // how far the row itself drifts up at a full lift
+const LIFT_RISE = 0.03; // how far the row itself drifts up at a full lift
+// Scrolling the settled deck the way iOS does it: the finger lets go and the
+// deck keeps going, losing this fraction of its speed every millisecond, until
+// it's slow enough to land on the nearest card.
+const SCROLL_FRICTION = 0.994;
+const SCROLL_STOP = 0.02; // px/ms — below this the glide is over
+// Flicking a card up off the deck closes that app. Distance is a fraction of the
+// lifted card's height; velocity is px/ms, so a short hard flick counts too.
+const CARD_CLOSE_DISTANCE = 0.16;
+const CARD_CLOSE_VELOCITY = 0.5;
+// What happens after the finger lets go is integrated as physics rather than
+// eased over a fixed duration, so the motion continues the gesture instead of
+// restarting it: a card that is put back springs from the speed it was moving
+// at, and a card that is thrown leaves at the speed it was thrown. px and
+// seconds — the gestures' px/ms is converted on the way in.
+const CARD_STIFFNESS = 420; // per second squared; with the damping below this
+const CARD_DAMPING = 34; //    sits just under critical, so a card settles with
+//                             the barest overshoot rather than gliding in dead
+const CARD_REST = 0.5; // px from home it counts as landed...
+const CARD_REST_V = 40; // ...if it's also under half a pixel a frame. Without a
+//                          velocity floor this wide the tail of the spring is
+//                          spent crawling the last pixel, which doubles how
+//                          long the gesture takes to finish for nothing seen.
+const CARD_LAUNCH = 2000; // px/s floor on the speed a card leaves the deck at,
+//                           so a slow drag past the commit distance still goes
+const CARD_ACCEL = 3600; // px/s^2 it keeps gaining, so it clears the top rather
+//                          than trailing off the screen
+const CARD_TRAIL = 0.9; // screens of travel over which a leaving card fades out
+const CARD_TRAIL_FLOOR = 0.35; // ...but never below this while the finger holds it
 
 function refHeight(h: number): number {
   return Math.min(h, REF_HEIGHT);
+}
+
+/** Eased at both ends, so a value ramped in over a window arrives and leaves
+ *  without a corner — used for anything that fades in partway through another
+ *  animation, where a linear ramp shows the moment it starts. */
+function smooth(k: number): number {
+  const t = Math.max(0, Math.min(1, k));
+  return t * t * (3 - 2 * t);
+}
+
+/** How visible a card is once it has been dragged `dy` up off the deck: gone by
+ *  the time it has travelled CARD_TRAIL screens. A function of where the card
+ *  is rather than of how long it has been going, so the fade can't come unstuck
+ *  from the motion when the finger hands it over mid-flight. */
+function cardTrail(dy: number, h: number): number {
+  return Math.max(0, Math.min(1, 1 + dy / (h * CARD_TRAIL)));
+}
+
+/** A spring, integrated frame by frame: it takes the velocity the finger left
+ *  behind (px/s) and carries `x` to `to`, painting every step. Semi-implicit
+ *  Euler with dt clamped, so a dropped frame integrated in one go can't throw
+ *  it. `hold` is where the caller keeps its rAF handle, so an interrupting
+ *  gesture cancels this the same way it cancels every other animation here. */
+function springTo(
+  from: number,
+  velocity: number,
+  to: number,
+  paint: (x: number) => void,
+  done: () => void,
+  hold: { current: number },
+) {
+  let x = from;
+  let v = velocity;
+  let prev = performance.now();
+  const step = (now: number) => {
+    const dt = Math.min(0.032, (now - prev) / 1000);
+    prev = now;
+    v += (-CARD_STIFFNESS * (x - to) - CARD_DAMPING * v) * dt;
+    x += v * dt;
+    if (Math.abs(x - to) < CARD_REST && Math.abs(v) < CARD_REST_V) {
+      paint(to);
+      return done();
+    }
+    paint(x);
+    hold.current = requestAnimationFrame(step);
+  };
+  hold.current = requestAnimationFrame(step);
 }
 
 type Axis = "x" | "y";
@@ -108,6 +272,33 @@ interface Drag {
   /** How far the row is currently lifted, 0 → 1; the spring-back animates this
    *  number back to 0 through the same painter the finger drives. */
   lift: number;
+  /** Set once the hold-timer fires: the switcher is showing and frozen, and
+   *  further finger movement is ignored until release. */
+  held: boolean;
+  /** When the finger last dropped to a near-stop while lifted (or null while
+   *  it's moving). A long enough gap before release is the "hold" that means
+   *  App Switcher instead of Home. */
+  slowSince: number | null;
+  /** Which card was focused when the gesture started. Paging the settled deck
+   *  is measured from here, so one long drag can cross several cards. */
+  base: number;
+}
+
+/** A gesture on the cards themselves once the App Switcher is settled: sideways
+ *  scrolls the deck, up throws a card off it. `card` is the app the finger went
+ *  down on, which is not necessarily the focused one. */
+interface SwitcherDrag {
+  id: number;
+  x0: number;
+  y0: number;
+  x: number;
+  y: number;
+  t: number;
+  vx: number;
+  vy: number;
+  axis: Axis | null;
+  base: number;
+  card: string | null;
 }
 
 // iOS uses the home-screen → fullscreen-app paradigm: one app fills the screen.
@@ -127,6 +318,9 @@ export default function IOSShell(props: SkinProps) {
   const [spotlight, setSpotlight] = useState(() => initial().spotlight);
   const [closing, setClosing] = useState(false); // app is shrinking back to its icon
   const [peek, setPeek] = useState(false); // home showing behind a live swipe-up
+  // True once a hold has been released into the persistent App Switcher: the
+  // row stays lifted and no app is fullscreen, same as real iOS after a pause.
+  const [switcher, setSwitcher] = useState(false);
 
   const screenRef = useRef<HTMLDivElement>(null);
   const deckRef = useRef<HTMLDivElement>(null);
@@ -139,6 +333,20 @@ export default function IOSShell(props: SkinProps) {
   const pendingSlide = useRef<number | null>(null);
   const busy = useRef(false); // guards against re-entrant close while animating
   const drag = useRef<Drag | null>(null);
+  const swipe = useRef<SwitcherDrag | null>(null); // gestures on the settled deck
+  const cardRaf = useRef(0); // a card being thrown off the deck, or falling back
+  const scrollRaf = useRef(0); // the deck gliding on after the finger let go
+  // Set while the deck is closing the gap a thrown card left behind: how many
+  // places in the row each remaining card still has to travel, by app id. Read
+  // by paintStack, so the settle goes through the same projection as everything
+  // else — a card moving in shrinks, dims and re-orders on the way instead of
+  // sliding as a flat rectangle into its new place.
+  const reflow = useRef<Map<string, number> | null>(null);
+  const reflowRaf = useRef(0);
+  // The fractional card the deck is painted on right now. A glide or a settle
+  // has to start from exactly where the last frame left it, not from the last
+  // card that was committed as the focus.
+  const liveIndex = useRef(0);
   const swiped = useRef(false); // a real drag happened; swallow the click after it
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const raf = useRef(0); // the spring-back that returns an abandoned lift to 0
@@ -153,6 +361,9 @@ export default function IOSShell(props: SkinProps) {
     () => () => {
       clearHoldTimer();
       cancelAnimationFrame(raf.current);
+      cancelAnimationFrame(cardRaf.current);
+      cancelAnimationFrame(scrollRaf.current);
+      cancelAnimationFrame(reflowRaf.current);
     },
     [],
   );
@@ -162,13 +373,22 @@ export default function IOSShell(props: SkinProps) {
   // minimise animation plays in place instead of jumping to the row's start.
   const lastIndex = useRef(0);
   const deckIndex = index >= 0 ? index : lastIndex.current;
+  // The render-time `deckIndex` above can lag `lastIndex.current`: paging the
+  // switcher writes that ref without a re-render, so anything imperative (the
+  // painter, the spring-backs, the release handlers) has to read the focus
+  // live or it snaps back to whichever card was focused when the row lifted.
+  const focusIndex = () => (index >= 0 ? index : lastIndex.current);
 
   // ------------------------------------------------------------------ elements
   function activeViewEl(): HTMLElement | null {
     return deckRef.current?.querySelector<HTMLElement>(".ios-deck-slot.is-active .ios-appview") ?? null;
   }
+  // offsetWidth, not getBoundingClientRect().width: the deck is scaled down while
+  // the App Switcher is up, and the rect would report that shrunk width back —
+  // every position the painter derives from it would then compound the scale.
+  // offsetWidth is the layout width, before any transform.
   function deckWidth(): number {
-    return deckRef.current?.getBoundingClientRect().width ?? 0;
+    return deckRef.current?.offsetWidth ?? 0;
   }
   // Live horizontal offset, read through the computed style so it's right even
   // mid-animation — that's what lets an interrupted slide be picked up.
@@ -313,23 +533,149 @@ export default function IOSShell(props: SkinProps) {
   // screen, 1 = a fully lifted row of cards). The finger calls it, and so does
   // the spring-back, so both take exactly the same path.
   //
-  // The row scales as ONE layer about the screen's centre, which is what brings
-  // the neighbours in from the sides on their own. The gap and the corner are
-  // authored in on-screen px and divided by that scale, so they stay the size
-  // they were asked for however far the row has shrunk.
-  function paintLift(lift: number, dx: number) {
+  // The row takes the shared shrink as ONE layer about the screen's centre,
+  // which is what brings the neighbours in from the sides on their own; each
+  // card's own depth is then layered on top of that, per slot, in paintStack.
+  // Splitting it this way means the per-card scale is a small correction around
+  // 1 rather than the whole shrink, so a card never has to be un-scaled to
+  // stay aligned — every offset here is a fraction of the deck's own width and
+  // rides the row's scale unchanged.
+  //
+  // `idx` is deliberately allowed to be fractional: scrolling the settled deck
+  // paints a position between two cards every frame.
+  function paintLift(lift: number, dx: number, idx = focusIndex()) {
     const el = deckRef.current;
     if (!el) return;
     const w = deckWidth() || 1;
     const h = refHeight(screenRef.current?.getBoundingClientRect().height ?? 1);
     const s = 1 - CARD_SHRINK * lift;
-    const gap = (CARD_GAP * lift) / s;
-    const x = -s * deckIndex * (w + gap) + dx;
+    // .ios-deck scales about its own centre (no transform-origin is set), which
+    // keeps whatever card is at the middle of the row centred on screen for
+    // free — so the row only has to be shifted sideways to put card `idx` in
+    // that middle.
+    const x = -s * idx * w + dx;
     const y = -h * LIFT_RISE * lift;
-    el.style.setProperty("--deck-gap", `${gap}px`);
-    el.style.setProperty("--card-radius", `${(CARD_RADIUS * lift) / s}px`);
+    liveIndex.current = idx;
+    // Divided by the row's scale so it lands at its authored size on screen,
+    // and capped against the live deck width so a narrow window doesn't get an
+    // over-rounded card. Deliberately NOT divided by each card's own depth
+    // scale as well: a card further back should have a smaller corner, the same
+    // as it has a smaller everything else.
+    const radius = Math.min(CARD_RADIUS, w * CARD_RADIUS_MAX);
+    el.style.setProperty("--card-radius", `${(radius * lift) / s}px`);
     el.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
+    paintStack(lift, idx, w);
     if (scrimRef.current) scrimRef.current.style.opacity = `${lift}`;
+  }
+
+  // The two halves of the projection, and the only place the deck's geometry is
+  // defined. `p` is the card's signed distance from the focus and is deliberately
+  // fractional: a live scroll paints a position between two cards every frame,
+  // and both of these are smooth in `p` so that position gets a smooth size and
+  // a smooth offset rather than snapping at each card boundary.
+
+  // How big a card `p` steps back is drawn, as a fraction of a card at the
+  // focus. |p|, so the row recedes the same way on both sides.
+  function cardDepth(p: number): number {
+    return 1 / (1 + CARD_DEPTH * Math.abs(p));
+  }
+
+  // Where its centre projects to, in pre-scale deck widths from the focus. The
+  // world offset CARD_SPREAD*p is divided by the SAME depth divisor that shrank
+  // the card, which is what keeps the two consistent: as cards recede their
+  // steps close up at exactly the rate their size falls off, so the deck reads
+  // as one stack going back instead of a row of shrinking rectangles.
+  function cardOffset(p: number): number {
+    return CARD_SPREAD * p * cardDepth(p);
+  }
+
+  // The half of the stack the shared row-scale can't express: each card's own
+  // size, its place in the row, how far it's dimmed, and which card covers
+  // which. All four are a function of the slot's DISTANCE FROM THE FOCUS, not
+  // its index — the focus moves every frame during a scroll and React isn't in
+  // that loop, so it's written per slot here. Every term is scaled by `lift`,
+  // so at rest the slots fall back onto the plain one-per-screen tiling the
+  // rest of the shell relies on.
+  function paintStack(lift: number, idx: number, w: number) {
+    const el = deckRef.current;
+    if (!el) return;
+    // How much of the deck behind the focused card has arrived: 0 leaves that
+    // card alone on the screen, 1 is the settled row. The card being lifted is
+    // never held back by it, only everything else.
+    const reveal = smooth((lift - CARD_REVEAL) / (1 - CARD_REVEAL));
+    const shifts = reflow.current;
+    el.querySelectorAll<HTMLElement>(".ios-deck-slot").forEach((slot) => {
+      // Where the stylesheet has already tiled this slot, from its place in the
+      // row as React currently has it.
+      const raw = Number(slot.dataset.pos ?? 0) - idx;
+      // ...and where the projection should treat it as being, which is the same
+      // thing except while the deck is closing a gap: the cards that have to
+      // move carry a fraction of a place for the length of that settle, so they
+      // travel through every intermediate depth rather than jumping a place the
+      // moment React renumbers the row (see the settle in the effect below).
+      const p = raw + (shifts?.get(slot.dataset.app ?? "") ?? 0);
+      const dist = Math.abs(p);
+      // How far this card is still being held off screen, 1 = not yet arrived.
+      // Weighted by distance so the focused card is never held, and so a card
+      // part way between two places during a scroll is held part way too.
+      const held = (1 - reveal) * Math.min(1, dist);
+      // Ease the card's own scale in with the lift, from 1 (flat, tiling the
+      // row one screen apart) to its projected size. The row's shared scale is
+      // applied to the deck, so this multiplies it rather than replacing it.
+      const q = 1 - lift * (1 - cardDepth(p));
+      // The offset is authored as where the card should END UP, so subtract the
+      // `raw` screens the stylesheet has already tiled the slot by. A card that
+      // hasn't arrived yet waits a further CARD_ENTER out towards the edge it
+      // will come in from, so the reveal is a slide rather than a fade in place.
+      const enter = held * CARD_ENTER * Math.sign(p);
+      slot.style.setProperty("--card-x", `${lift * w * (cardOffset(p) + enter - raw)}px`);
+      slot.style.setProperty("--card-scale", `${q}`);
+      // Nearest the focus on top; every card recedes behind it, both directions.
+      // Rounded off `dist` so the order is stable frame to frame and the swap as
+      // two cards cross the centre lands while they're a half-step apart. The
+      // cards at +n and -n are the same distance out, so `dist` alone leaves
+      // them tied and the browser would fall back to DOM order — which is mount
+      // order, not row order. The older (left) card takes the extra step back,
+      // so the deck always recedes the same way whatever order apps opened in.
+      slot.style.zIndex = String(CARD_Z - Math.round(dist * 100) - (p < 0 ? 1 : 0));
+      // A card behind sits in the shadow of the one in front. Laid over the card
+      // rather than taken out of its opacity: opacity would make the app itself
+      // translucent and the blurred home screen would show through it.
+      slot.style.setProperty(
+        "--card-dim",
+        `${(1 - held) * lift * Math.min(CARD_DIM_MAX, CARD_DIM * dist)}`,
+      );
+      // Past the first neighbour a card is mostly off-screen anyway; this is
+      // what stops the far end of a long deck piling up as a hard edge.
+      slot.style.opacity = `${(1 - held) * (1 - lift * CARD_FADE * Math.min(2, Math.max(0, dist - 1)))}`;
+    });
+  }
+
+  // Anything that takes over the deck finishes a gap-settle on the spot rather
+  // than abandoning it: the shift it carries is what every later paint measures
+  // from, so it can't be left part way through.
+  function finishSettle() {
+    if (!reflow.current) return;
+    cancelAnimationFrame(reflowRaf.current);
+    reflow.current = null;
+    paintLift(1, 0);
+  }
+
+  function slotEl(id: string): HTMLElement | null {
+    return deckRef.current?.querySelector<HTMLElement>(`.ios-deck-slot[data-app="${id}"]`) ?? null;
+  }
+
+  // On-screen px from the focused card to its neighbour in the settled deck —
+  // the unit every scroll gesture is measured in. Taken from cardOffset rather
+  // than from CARD_SPREAD directly so it can't drift from what's painted: the
+  // projection shortens the first step by the neighbour's depth, and a gesture
+  // measured against the un-projected spread would move the row further than
+  // the finger. Steps further back are shorter still, but the drag is always
+  // moving the card at the FOCUS, so the focus-to-neighbour step is the honest
+  // unit for it.
+  function cardStep(): number {
+    const w = deckWidth() || 1;
+    return Math.max(1, (1 - CARD_SHRINK) * cardOffset(1) * w);
   }
 
   // Put the row back the way the rest of the shell expects to find it.
@@ -339,13 +685,21 @@ export default function IOSShell(props: SkinProps) {
     const el = deckRef.current;
     if (el) {
       el.classList.remove("is-moving");
-      el.style.transform = `translateX(${-deckIndex * 100}%)`;
-      el.style.setProperty("--deck-gap", "0px");
+      el.style.transform = `translateX(${-focusIndex() * 100}%)`;
       if (!keepCard) {
         el.classList.remove("switching");
-        el.style.removeProperty("--deck-gap");
         el.style.removeProperty("--card-radius");
       }
+      // The stack's per-slot state is only meaningful while the row is lifted;
+      // left behind, it would out-rank the active app's own slot.
+      el.querySelectorAll<HTMLElement>(".ios-deck-slot").forEach((slot) => {
+        slot.style.zIndex = "";
+        slot.style.opacity = "";
+        slot.style.removeProperty("--card-x");
+        slot.style.removeProperty("--card-scale");
+        slot.style.removeProperty("--card-dim");
+        slot.style.removeProperty("--card-dy");
+      });
     }
     if (scrimRef.current) scrimRef.current.style.opacity = "0";
     setPeek(false);
@@ -365,6 +719,30 @@ export default function IOSShell(props: SkinProps) {
       paintLift(lift * (1 - e), dx * (1 - e));
       if (k < 1) raf.current = requestAnimationFrame(step);
       else endLift();
+    };
+    raf.current = requestAnimationFrame(step);
+  }
+
+  // The mirror of springLift: carry a partial lift the REST of the way UP to a
+  // settled row of cards, then hand it to enterSwitcher so the row stays put as
+  // real state. Every path that commits to the switcher from a half-finished
+  // drag comes through here — a mid-band release, a swipe up from the home
+  // screen, the hold timer firing under the finger.
+  function settleToSwitcher(lift: number, dx: number) {
+    if (prefersReducedMotion()) {
+      paintLift(1, 0);
+      return enterSwitcher();
+    }
+    const t0 = performance.now();
+    const step = (now: number) => {
+      const k = Math.min(1, (now - t0) / SPRING.duration);
+      const e = 1 - Math.pow(1 - k, 3);
+      paintLift(lift + (1 - lift) * e, dx * (1 - e));
+      if (k < 1) raf.current = requestAnimationFrame(step);
+      else {
+        paintLift(1, 0);
+        enterSwitcher();
+      }
     };
     raf.current = requestAnimationFrame(step);
   }
@@ -401,6 +779,403 @@ export default function IOSShell(props: SkinProps) {
     promote(id);
   }
 
+  // Land in the persistent App Switcher: the hold already painted the row at
+  // full lift (paintLift(1, 0) in dragCard), so this just turns that live-drag
+  // visual into real state — no app is fullscreen, and the row stays lifted
+  // instead of springing back or continuing on to Home.
+  function enterSwitcher() {
+    setPeek(true);
+    setSwitcher(true);
+    setActiveId(null);
+  }
+
+  // Tapping a card in the switcher: unlift the row and open that app, right
+  // from wherever the row currently has the card (not a fresh zoom out of its
+  // launcher icon — it is already open, just suspended).
+  function openFromSwitcher(id: string) {
+    if (busy.current) return;
+    const pos = deck.order.indexOf(id);
+    if (pos < 0) return;
+    cancelAnimationFrame(raf.current);
+    cancelAnimationFrame(scrollRaf.current);
+    const el = deckRef.current;
+    const from = el ? getComputedStyle(el).transform : IDENTITY;
+    lastIndex.current = pos;
+    setSwitcher(false);
+    pendingZoom.current = null;
+    pendingSlide.current = null;
+    setActiveId(id);
+    if (el) {
+      // Each slot carries its own depth now, so dropping the stack has to be
+      // animated per slot as well as on the row: clearing the properties alone
+      // would snap the tapped card from its projected size straight to
+      // fullscreen, a visible jump under the finger that lands on it. Read every
+      // slot's live matrix BEFORE the properties go, then hand each one the same
+      // spring the row is taking — the card grows out of exactly where it sat.
+      const slots = [...el.querySelectorAll<HTMLElement>(".ios-deck-slot")].map((slot) => ({
+        slot,
+        from: getComputedStyle(slot).transform,
+      }));
+      el.classList.remove("switching", "is-moving");
+      el.style.removeProperty("--card-radius");
+      for (const { slot } of slots) {
+        slot.style.zIndex = "";
+        slot.style.opacity = "";
+        slot.style.removeProperty("--card-x");
+        slot.style.removeProperty("--card-scale");
+        slot.style.removeProperty("--card-dim");
+        slot.style.removeProperty("--card-dy");
+      }
+      // Cleared in one pass, then animated in another: reading a slot's
+      // computed transform flushes style, so interleaving the two would force a
+      // recalc per card instead of one for the lot.
+      if (!prefersReducedMotion()) {
+        for (const { slot, from: was } of slots) {
+          const rest = getComputedStyle(slot).transform;
+          if (was === rest) continue;
+          slot.animate([{ transform: was }, { transform: rest }], {
+            duration: SPRING.duration,
+            easing: SPRING.easing,
+          });
+        }
+      }
+      const to = `translateX(${-pos * 100}%)`;
+      el.style.transform = to;
+      if (!prefersReducedMotion()) {
+        el.animate([{ transform: from }, { transform: to }], { duration: SPRING.duration, easing: SPRING.easing });
+      }
+    }
+    if (scrimRef.current) scrimRef.current.style.opacity = "0";
+    setPeek(false);
+  }
+
+  // Tap the bar (or Escape, or Back) while the switcher is showing: dismiss it
+  // without opening anything, the same spring-back path an abandoned drag
+  // takes, just starting from a full lift instead of a partial one.
+  function closeSwitcherToHome() {
+    cancelAnimationFrame(raf.current);
+    cancelAnimationFrame(scrollRaf.current);
+    setSwitcher(false);
+    springLift(1, 0);
+  }
+
+  // --------------------------------------------------- scrolling the settled deck
+  // A fractional card position, resisted once it runs past either end of the
+  // deck so the row rubber-bands instead of dragging a blank screen into view.
+  function resistIndex(idx: number): number {
+    const last = deck.order.length - 1;
+    if (idx < 0) return idx * EDGE_RESIST;
+    if (idx > last) return last + (idx - last) * EDGE_RESIST;
+    return idx;
+  }
+
+  // Where a scroll of `dx` px, started with card `base` focused, has got to —
+  // in cards, fractional, resisted past either end of the deck.
+  function scrolledTo(dx: number, base: number): number {
+    return resistIndex(base - dx / cardStep());
+  }
+
+  // Land the deck on one card and make it the focus. Walked by hand from
+  // whatever fractional position is on screen right now, because a settle moves
+  // the per-card offsets as well as the row — one painter has to drive both.
+  function settleFocus(target: number) {
+    const t = Math.max(0, Math.min(deck.order.length - 1, target));
+    lastIndex.current = t;
+    cancelAnimationFrame(scrollRaf.current);
+    const from = liveIndex.current;
+    if (prefersReducedMotion() || from === t) return paintLift(1, 0, t);
+    const t0 = performance.now();
+    const step = (now: number) => {
+      const k = Math.min(1, (now - t0) / SLIDE.duration);
+      const e = 1 - Math.pow(1 - k, 3);
+      paintLift(1, 0, from + (t - from) * e);
+      if (k < 1) scrollRaf.current = requestAnimationFrame(step);
+    };
+    scrollRaf.current = requestAnimationFrame(step);
+  }
+
+  // A finger that lets go while still moving doesn't stop dead: the deck keeps
+  // coasting under friction, the way the real switcher does, and only settles on
+  // a card once it's crawling — or the moment it runs off either end.
+  function releaseScroll(vx: number) {
+    const last = deck.order.length - 1;
+    if (prefersReducedMotion()) return settleFocus(Math.round(liveIndex.current));
+    let v = vx;
+    let idx = liveIndex.current;
+    let prev = performance.now();
+    const step = (now: number) => {
+      const dt = Math.min(32, now - prev);
+      prev = now;
+      // Cards per ms: the glide is measured in the same unit the drag was.
+      idx -= (v * dt) / cardStep();
+      v *= Math.pow(SCROLL_FRICTION, dt);
+      if (Math.abs(v) < SCROLL_STOP || idx < 0 || idx > last) {
+        return settleFocus(Math.round(Math.max(0, Math.min(last, idx))));
+      }
+      paintLift(1, 0, idx);
+      scrollRaf.current = requestAnimationFrame(step);
+    };
+    scrollRaf.current = requestAnimationFrame(step);
+  }
+
+  // ------------------------------------------------ throwing a card off the deck
+  // A card leaving the deck is the one thing on it that moves on its own, so
+  // it's the one thing that doesn't go through paintStack: its travel lives in
+  // --card-dy, which the stylesheet composes with the place in the row the
+  // stack painter is still responsible for. Nothing else on the deck is touched
+  // for the whole throw — the cards behind stay exactly where the finger found
+  // them, and the gap only closes once the card is gone.
+  function paintCard(slot: HTMLElement, dy: number, h: number, floor = 0) {
+    slot.style.setProperty("--card-dy", `${dy}px`);
+    slot.style.opacity = `${Math.max(floor, cardTrail(dy, h))}`;
+  }
+
+  // Track one card up under the finger. Downward travel is resisted: this
+  // gesture only goes one way.
+  function dragCardOff(id: string, dy: number) {
+    const slot = slotEl(id);
+    if (!slot) return;
+    const h = refHeight(screenRef.current?.getBoundingClientRect().height ?? 1);
+    // Over the rest of the deck for as long as it's in the air: a card being
+    // taken off the top shouldn't climb UNDER the one in front of it. The stack
+    // painter owns this again the moment the throw is over.
+    slot.style.zIndex = String(CARD_Z + 1);
+    // Held off the floor while the finger is down, so a long drag that hasn't
+    // committed to anything yet doesn't leave the visitor holding an invisible
+    // card.
+    paintCard(slot, dy > 0 ? dy * 0.3 : dy, h, CARD_TRAIL_FLOOR);
+  }
+
+  // Not thrown far enough — the card springs back into the deck, carrying
+  // whatever speed the finger let go with. It's a spring rather than a fixed
+  // ease so an aborted flick decelerates, turns round and comes back, instead
+  // of stopping dead and starting a new animation from rest.
+  function returnCard(id: string, vy: number) {
+    const slot = slotEl(id);
+    if (!slot) return;
+    cancelAnimationFrame(cardRaf.current);
+    const h = refHeight(screenRef.current?.getBoundingClientRect().height ?? 1);
+    const from = Number.parseFloat(slot.style.getPropertyValue("--card-dy")) || 0;
+    const land = () => {
+      slot.style.removeProperty("--card-dy");
+      slot.style.opacity = "";
+      slot.style.zIndex = "";
+      paintLift(1, 0); // the card's depth is the stack's to write, not the drag's
+    };
+    if (prefersReducedMotion()) return land();
+    springTo(from, vy * 1000, 0, (x) => paintCard(slot, x, h), land, cardRaf);
+  }
+
+  // Thrown: the card flies off the top and the app is closed for real — its
+  // slot unmounts, which is the one place the deck deliberately throws away an
+  // app's scroll position. Ballistic rather than sprung: a card that is leaving
+  // has nowhere to settle, so it keeps the speed it was thrown at and gains a
+  // little more, which is what makes a hard flick leave hard while a slow drag
+  // past the commit distance still goes promptly.
+  function closeCard(id: string, vy: number) {
+    const slot = slotEl(id);
+    const h = screenRef.current?.getBoundingClientRect().height ?? 800;
+    const drop = () => {
+      const gap = deck.order.indexOf(id);
+      const idx = focusIndex();
+      // Everything on the far side of the gap closes it, and everything between
+      // the gap and the focused card stays put — the focused card included,
+      // which shouldn't slide out from under the eye because something else was
+      // thrown away. So when the gap is to the LEFT of the focus the focus moves
+      // in with the row and the cards left of the gap come toward it; when it's
+      // to the right, the focus holds and the cards right of the gap come in.
+      // Either way every remaining card starts this settle exactly where the
+      // throw left it: recorded here, in places in the row, before React
+      // renumbers them.
+      const back = gap >= 0 && gap < idx ? 1 : 0;
+      const shift = new Map<string, number>();
+      deck.order.forEach((other, at) => {
+        if (other !== id) shift.set(other, (at > gap ? 1 : 0) - back);
+      });
+      reflow.current = [...shift.values()].some((v) => v !== 0) ? shift : null;
+      lastIndex.current = Math.max(0, idx - back);
+      setDeck((d) => ({
+        order: d.order.filter((x) => x !== id),
+        mounted: d.mounted.filter((x) => x !== id),
+      }));
+    };
+    if (!slot || prefersReducedMotion()) return drop();
+    cancelAnimationFrame(cardRaf.current);
+    const ref = refHeight(h);
+    let x = Number.parseFloat(slot.style.getPropertyValue("--card-dy")) || 0;
+    let v = Math.min(-CARD_LAUNCH, vy * 1000);
+    let prev = performance.now();
+    const step = (now: number) => {
+      const dt = Math.min(0.032, (now - prev) / 1000);
+      prev = now;
+      v -= CARD_ACCEL * dt;
+      x += v * dt;
+      if (x <= -h) return drop(); // clear of the top; nothing left to draw
+      paintCard(slot, x, ref);
+      cardRaf.current = requestAnimationFrame(step);
+    };
+    cardRaf.current = requestAnimationFrame(step);
+  }
+
+  // Closing a card shortens the deck, so the rest of the stack has to close the
+  // gap it left. Emptying it altogether leaves nothing to look at — iOS drops
+  // you back to the home screen.
+  //
+  // A layout effect, not a passive one: React has just renumbered every slot's
+  // place in the row, and a frame painted between that and the first frame of
+  // the settle would show every card already sitting in its new place.
+  useLayoutEffect(() => {
+    if (!switcher) return;
+    if (deck.order.length === 0) {
+      reflow.current = null;
+      return closeSwitcherToHome();
+    }
+    lastIndex.current = Math.min(lastIndex.current, deck.order.length - 1);
+    const shift = reflow.current;
+    // Paint first either way: with a settle pending this holds every card where
+    // the throw left it, and without one it's the plain repaint a shorter deck
+    // needs anyway.
+    paintLift(1, 0);
+    if (!shift) return;
+    if (prefersReducedMotion()) {
+      reflow.current = null;
+      return paintLift(1, 0);
+    }
+    // Run in px, so the gap closes with the same physics the cards themselves
+    // take, and handed back to paintStack as the fraction of a place each card
+    // has left to go. The px are one place in the row, not one screen: that's
+    // the distance a card actually covers here, so the spring's landing is
+    // scaled to the movement being made.
+    const w = cardStep();
+    const from = new Map(shift);
+    springTo(
+      w,
+      0,
+      0,
+      (x) => {
+        from.forEach((v, key) => shift.set(key, (v * x) / w));
+        paintLift(1, 0);
+      },
+      () => {
+        reflow.current = null;
+        paintLift(1, 0);
+      },
+      reflowRaf,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [switcher, deck.order.length]);
+
+  // Trackpad / mouse-wheel scrolling for the settled switcher. The pointer
+  // handlers already cover touch and mouse drags; a two-finger horizontal swipe
+  // on a laptop trackpad arrives as `wheel` events instead, so it's wired up
+  // here. The listener is attached natively and non-passive because a horizontal
+  // wheel would otherwise trigger the browser's Back/Forward swipe, and React's
+  // onWheel can't preventDefault. The deck keeps following the wheel the whole
+  // time; a short gap with no event counts as the release and settles the row.
+  useEffect(() => {
+    if (!switcher) return;
+    const el = deckRef.current;
+    if (!el) return;
+    let pos = liveIndex.current;
+    let running = false;
+    let settle: ReturnType<typeof setTimeout> | null = null;
+    const onWheel = (e: WheelEvent) => {
+      // Trackpads send the sideways component as deltaX; a plain mouse wheel
+      // only has deltaY, and using it to page the deck is a fair fallback since
+      // the switcher has nothing else for a wheel to do.
+      const move = Math.abs(e.deltaX) >= Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (move === 0) return;
+      e.preventDefault();
+      cancelAnimationFrame(scrollRaf.current);
+      cancelAnimationFrame(raf.current);
+      finishSettle();
+      if (!running) {
+        pos = liveIndex.current;
+        running = true;
+      }
+      const last = deck.order.length - 1;
+      pos = Math.max(-0.6, Math.min(last + 0.6, pos + move / cardStep()));
+      paintLift(1, 0, resistIndex(pos));
+      if (settle) clearTimeout(settle);
+      settle = setTimeout(() => {
+        running = false;
+        settleFocus(Math.round(Math.max(0, Math.min(last, pos))));
+      }, 110);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      if (settle) clearTimeout(settle);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [switcher, deck.order.length]);
+
+  // ------------------------------------ pointer gestures on the settled deck
+  // Once the switcher is up, the cards themselves take the gesture: sideways
+  // scrolls the whole deck (as far as the finger travels — not one card per
+  // swipe), and up throws whichever card it started on off the deck. A gesture
+  // that never locks an axis stays a tap, and the slot's onClick reopens it.
+  function onDeckDown(e: React.PointerEvent<HTMLElement>) {
+    if (!switcher || busy.current) return;
+    cancelAnimationFrame(raf.current);
+    cancelAnimationFrame(cardRaf.current);
+    cancelAnimationFrame(scrollRaf.current); // a finger down stops the glide dead
+    finishSettle();
+    swiped.current = false;
+    swipe.current = {
+      id: e.pointerId,
+      x0: e.clientX,
+      y0: e.clientY,
+      x: e.clientX,
+      y: e.clientY,
+      t: performance.now(),
+      vx: 0,
+      vy: 0,
+      axis: null,
+      base: focusIndex(),
+      card: (e.target as Element | null)?.closest?.(".ios-deck-slot")?.getAttribute("data-app") ?? null,
+    };
+  }
+
+  function onDeckMove(e: React.PointerEvent<HTMLElement>) {
+    const d = swipe.current;
+    if (!d || e.pointerId !== d.id) return;
+    const now = performance.now();
+    const dt = Math.max(1, now - d.t);
+    d.vx = 0.7 * ((e.clientX - d.x) / dt) + 0.3 * d.vx;
+    d.vy = 0.7 * ((e.clientY - d.y) / dt) + 0.3 * d.vy;
+    d.x = e.clientX;
+    d.y = e.clientY;
+    d.t = now;
+
+    const dx = e.clientX - d.x0;
+    const dy = e.clientY - d.y0;
+    if (!d.axis) {
+      if (Math.hypot(dx, dy) < AXIS_LOCK) return;
+      d.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      swiped.current = true;
+      // Captured only now it's certainly a drag: capturing on pointerdown would
+      // retarget the click that a plain tap on a card still needs.
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    if (d.axis === "x") paintLift(1, 0, scrolledTo(dx, d.base));
+    else if (d.card) dragCardOff(d.card, dy);
+  }
+
+  function onDeckUp(e: React.PointerEvent<HTMLElement>) {
+    const d = swipe.current;
+    if (!d || e.pointerId !== d.id) return;
+    swipe.current = null;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    if (!d.axis) return; // a tap — the slot's onClick has it
+    if (d.axis === "x") return releaseScroll(d.vx);
+    if (!d.card) return;
+    const dy = d.y - d.y0;
+    const card = refHeight(screenRef.current?.getBoundingClientRect().height ?? 1) * (1 - CARD_SHRINK);
+    if (-dy > card * CARD_CLOSE_DISTANCE || d.vy < -CARD_CLOSE_VELOCITY) closeCard(d.card, d.vy);
+    else returnCard(d.card, d.vy);
+  }
+
   // ------------------------------------------------------------------ gestures
   // The home bar takes one pointer gesture and resolves it to an axis: sideways
   // moves the deck between apps, up lifts the current app off the screen. Both
@@ -411,6 +1186,7 @@ export default function IOSShell(props: SkinProps) {
     swiped.current = false;
     clearHoldTimer(); // defensive — a fresh gesture should never inherit one
     cancelAnimationFrame(raf.current); // catch a spring-back still in flight
+    cancelAnimationFrame(scrollRaf.current);
     if (busy.current) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     drag.current = {
@@ -426,6 +1202,9 @@ export default function IOSShell(props: SkinProps) {
       natural: null,
       from: deckOffset(),
       lift: 0,
+      held: false,
+      slowSince: null,
+      base: focusIndex(),
     };
   }
 
@@ -455,19 +1234,36 @@ export default function IOSShell(props: SkinProps) {
         // swipe simply picks the last app when the finger lifts.
         if (activeId) deckRef.current?.classList.add("is-moving");
       } else {
+        if (switcher) return; // already lifted — onBarUp turns this into a dismiss
         const el = activeViewEl();
-        if (!el) return; // home screen: a swipe up has nothing to lift
-        const r = el.getBoundingClientRect();
+        const r = (el ?? screenRef.current)?.getBoundingClientRect();
+        if (!r) return;
         d.natural = { left: r.left, top: r.top, width: r.width, height: r.height };
-        // Every card in the row has to be paintable now — they are what this
-        // gesture uncovers.
+        // No app on screen: the lift is coming off the home screen. With apps in
+        // the deck it can settle into the switcher (focused on the most recent,
+        // like iOS); with an empty deck there's nothing to land on, so onBarUp
+        // just springs it back — the frost only tracks the finger and lets go.
+        if (!el && deck.order.length > 0) lastIndex.current = deck.order.length - 1;
         deckRef.current?.classList.add("is-moving", "switching");
         setPeek(true); // uncover the home screen the row is lifting away from
       }
     }
 
-    if (d.axis === "x") dragDeck(dx);
-    else dragCard(dx, dy);
+    if (d.axis === "x") {
+      if (switcher) dragSwitcherPan(dx);
+      else dragDeck(dx);
+    } else if (!switcher) {
+      dragCard(dx, dy);
+    }
+  }
+
+  // Sideways swipe on the home bar while the App Switcher is showing: the same
+  // free scroll the cards themselves take, so the bar can reach the far end of
+  // the deck in one drag rather than a card at a time.
+  function dragSwitcherPan(dx: number) {
+    const d = drag.current;
+    if (!d) return;
+    paintLift(1, 0, scrolledTo(dx, d.base));
   }
 
   function dragDeck(dx: number) {
@@ -485,7 +1281,7 @@ export default function IOSShell(props: SkinProps) {
 
   function dragCard(dx: number, dy: number) {
     const d = drag.current;
-    if (!d?.natural) return;
+    if (!d?.natural || d.held) return;
     // This gesture only goes up; downward travel is heavily resisted.
     const travel = dy > 0 ? dy * 0.25 : dy;
     // Eased, not linear: iOS pulls the row down to card size in the first
@@ -496,21 +1292,33 @@ export default function IOSShell(props: SkinProps) {
     d.lift = 1 - (1 - raw) * (1 - raw);
     paintLift(d.lift, dx * 0.35);
 
-    // Past the (small) arm distance, treat a pause as "hold to minimize": reset
-    // a timer on every move, so it only actually fires once the finger stops.
-    // Below the arm distance — dragged back down again — drop it, matching a
-    // real device where easing off cancels the hold.
-    if (-dy > ref * HOLD_LIFT) {
-      clearHoldTimer();
-      holdTimer.current = setTimeout(() => {
-        holdTimer.current = null;
-        // Resolve the gesture right here, the same way a real release does — so
-        // if the finger lifts a moment later, onBarUp finds drag.current already
-        // cleared and does nothing, instead of re-finishing a drag that is
-        // already mid-animation.
-        drag.current = null;
-        void minimize();
-      }, HOLD_MS);
+    // Note when the finger settles to a near-stop while lifted — onBarUp reads
+    // that dwell to tell an App-Switcher hold from a swipe Home. Cleared the
+    // moment it's clearly moving again.
+    const armed = -dy > ref * HOLD_LIFT;
+    const parked = Math.abs(d.vy) < PARK_V;
+    if (armed && parked) {
+      if (d.slowSince === null) d.slowSince = performance.now();
+    } else {
+      d.slowSince = null;
+    }
+
+    // A long enough dwell opens the switcher without waiting for release: the
+    // row glides up under the still finger. Only where there's somewhere to land
+    // — an empty deck off the home screen just springs back (see onBarUp).
+    if (armed && parked && deck.order.length > 0) {
+      if (holdTimer.current === null) {
+        holdTimer.current = setTimeout(() => {
+          holdTimer.current = null;
+          const live = drag.current;
+          if (!live) return;
+          // Freeze the drag and glide the rest of the way into the switcher; it
+          // stays open for as long as the finger is down and lands as real
+          // state once it lifts (onBarUp). It does NOT close the app.
+          live.held = true;
+          settleToSwitcher(live.lift, (live.x - live.x0) * 0.35);
+        }, HOLD_MS);
+      }
     } else {
       clearHoldTimer();
     }
@@ -530,6 +1338,10 @@ export default function IOSShell(props: SkinProps) {
       const commit =
         Math.abs(dx) > AXIS_LOCK &&
         (Math.abs(dx) > w * SWITCH_DISTANCE || Math.abs(d.vx) > SWITCH_VELOCITY);
+      // Scrolling the deck while the switcher is open: land on whichever card
+      // the finger was heading for, still in the switcher — sideways never
+      // opens anything on its own, same as a real iPhone.
+      if (switcher) return releaseScroll(d.vx);
       // From the home screen there's only one destination: the last app, coming
       // in from whichever edge the finger swept away from.
       if (!activeId) {
@@ -541,10 +1353,43 @@ export default function IOSShell(props: SkinProps) {
       return;
     }
 
+    // A vertical drag on the bar while the switcher is up dismisses it to Home.
+    if (switcher) return void closeSwitcherToHome();
     if (!d.natural) return; // the swipe up never found a card to lift
+    // The hold already fired mid-drag and glided into the switcher; releasing
+    // just confirms it.
+    if (d.held) return void enterSwitcher();
+
     const dy = d.y - d.y0;
-    if (-dy > refHeight(d.natural.height) * HOME_DISTANCE || d.vy < -HOME_VELOCITY) void minimize();
-    else springLift(d.lift, (d.x - d.x0) * 0.35);
+    const ref = refHeight(d.natural.height);
+    const dxRest = (d.x - d.x0) * 0.35;
+    const fromHome = !activeId;
+    const canSwitch = deck.order.length > 0;
+
+    // Read the end of the gesture the way a real iPhone does — was the finger
+    // still moving up when it let go, or had it stopped? `idle` is ms since the
+    // last real movement: a touch sensor can lag pointerup ~50ms behind the last
+    // move even on a hard flick, so the flick test tolerates more idle than the
+    // dwell test does — a high trailing velocity is itself the proof it flicked.
+    const idle = performance.now() - d.t;
+    const flickedUp = d.vy < -HOME_FLICK_V && idle < 120;
+    const dwelled =
+      idle > IDLE_MS || (d.slowSince !== null && performance.now() - d.slowSince > DWELL_MS);
+
+    if (-dy < ref * MIN_LIFT) {
+      springLift(d.lift, dxRest); // barely moved — back onto the app (or home)
+    } else if (fromHome) {
+      // Already Home: a held lift with apps behind it reaches the switcher; a
+      // flick, or an empty deck, just drops back.
+      if (canSwitch && dwelled) settleToSwitcher(d.lift, dxRest);
+      else springLift(d.lift, dxRest);
+    } else if (flickedUp || (-dy > ref * PUSH_HOME && !dwelled)) {
+      void minimize(); // let go still moving up, or shoved right up → Home
+    } else if (dwelled) {
+      settleToSwitcher(d.lift, dxRest); // stopped first → stay in the App Switcher
+    } else {
+      void minimize(); // a bare swipe-up with no hold defaults to Home, like iOS
+    }
   }
 
   // Keyboard equivalent of the sideways swipe, for anyone who reaches the bar by
@@ -552,8 +1397,9 @@ export default function IOSShell(props: SkinProps) {
   function onBarKey(e: React.KeyboardEvent) {
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
     const back = e.key === "ArrowLeft";
-    if (!activeId) resumeLast(back ? -1 : 1);
-    else switchTo(deckIndex + (back ? -1 : 1));
+    if (switcher) settleFocus(focusIndex() + (back ? -1 : 1));
+    else if (!activeId) resumeLast(back ? -1 : 1);
+    else switchTo(focusIndex() + (back ? -1 : 1));
     e.preventDefault();
   }
 
@@ -563,11 +1409,12 @@ export default function IOSShell(props: SkinProps) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (spotlight) setSpotlight(false);
-      else void minimize();
+      else if (activeId) void minimize();
+      else if (switcher) closeSwitcherToHome();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeId, spotlight]);
+  }, [activeId, spotlight, switcher]);
 
   // Browser Back/Forward. The layer order matches Escape above: Spotlight is
   // shallower than the open app, so Back dismisses it first. Only the app on
@@ -582,7 +1429,11 @@ export default function IOSShell(props: SkinProps) {
     setSpotlight(r.overlay === "spotlight");
     const target = r.apps[0] ?? null;
     if (target === activeId) return;
-    if (target === null) return void minimize();
+    if (target === null) {
+      if (activeId) void minimize();
+      else if (switcher) closeSwitcherToHome();
+      return;
+    }
     const at = deck.order.indexOf(target);
     // Already in the row, and we're in another app: slide rather than zoom.
     if (at >= 0 && activeId) return switchTo(at);
@@ -602,7 +1453,13 @@ export default function IOSShell(props: SkinProps) {
     },
   };
 
-  const screenClass = ["ios-screen", activeId && "app-open", closing && "closing", peek && "peek"]
+  const screenClass = [
+    "ios-screen",
+    activeId && "app-open",
+    closing && "closing",
+    peek && "peek",
+    switcher && "switcher",
+  ]
     .filter(Boolean)
     .join(" ");
 
@@ -614,10 +1471,40 @@ export default function IOSShell(props: SkinProps) {
 
         {/* Frosts everything behind the lifted row — wallpaper, icons, dock —
             the way the App Switcher does. Sits under the deck and over the home
-            screen, and is invisible until a lift starts. */}
-        <div className="ios-switch-scrim" ref={scrimRef} aria-hidden="true" />
+            screen, and is invisible until a lift starts. Once the switcher is
+            settled the stylesheet re-enables its pointer events so a tap that
+            misses a card lands here (and dismisses) instead of falling through
+            to the home screen underneath. */}
+        <div
+          className="ios-switch-scrim"
+          ref={scrimRef}
+          aria-hidden="true"
+          onClick={switcher ? () => closeSwitcherToHome() : undefined}
+        />
 
-        <div className="ios-deck" ref={deckRef}>
+        {/* In the switcher the deck takes pointer events (see shell.css) so the
+            cards can be scrolled and thrown from anywhere on them. A press that
+            misses every card lands on the deck itself and dismisses, which is
+            what the scrim underneath would otherwise have caught. */}
+        <div
+          className={`ios-deck${switcher ? " is-moving switching" : ""}`}
+          ref={deckRef}
+          onPointerDown={switcher ? onDeckDown : undefined}
+          onPointerMove={switcher ? onDeckMove : undefined}
+          onPointerUp={switcher ? onDeckUp : undefined}
+          onPointerCancel={switcher ? onDeckUp : undefined}
+          onClick={
+            switcher
+              ? (e) => {
+                  // A drag captures the pointer, so its click lands here rather
+                  // than on the card it started on — that's a finished gesture,
+                  // not a tap on empty space.
+                  if (swiped.current) return void (swiped.current = false);
+                  if (e.target === e.currentTarget) closeSwitcherToHome();
+                }
+              : undefined
+          }
+        >
           {deck.mounted.map((id) => {
             const meta = getApp(id);
             const pos = deck.order.indexOf(id);
@@ -631,7 +1518,36 @@ export default function IOSShell(props: SkinProps) {
                 // above. The stylesheet turns this into a transform, spacing the
                 // slots by whatever gap the row currently has.
                 style={{ "--pos": String(pos) } as React.CSSProperties}
-                inert={!isActive}
+                // Read back by the stack painter, which runs outside React.
+                data-pos={pos}
+                data-app={id}
+                inert={!isActive && !switcher}
+                // In the switcher every card is tappable to reopen it — the app
+                // content itself ignores pointer events there (see shell.css),
+                // so this is what actually catches the tap.
+                role={switcher ? "button" : undefined}
+                tabIndex={switcher ? 0 : undefined}
+                aria-label={switcher ? `Open ${meta.title}` : undefined}
+                // A scroll or a throw ends in a click too; only a gesture that
+                // never moved counts as a tap on the card.
+                onClick={
+                  switcher
+                    ? () => {
+                        if (swiped.current) return void (swiped.current = false);
+                        openFromSwitcher(id);
+                      }
+                    : undefined
+                }
+                onKeyDown={
+                  switcher
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openFromSwitcher(id);
+                        }
+                      }
+                    : undefined
+                }
               >
                 <AppView meta={meta} api={api} onHome={() => void minimize()} />
               </div>
@@ -644,7 +1560,7 @@ export default function IOSShell(props: SkinProps) {
         {!spotlight && (
           <button
             className="ios-home-indicator"
-            aria-label={activeId ? "Home" : "Last app"}
+            aria-label={activeId ? "Home" : switcher ? "Close app switcher" : "Last app"}
             onPointerDown={onBarDown}
             onPointerMove={onBarMove}
             onPointerUp={onBarUp}
@@ -653,6 +1569,7 @@ export default function IOSShell(props: SkinProps) {
             onClick={() => {
               if (swiped.current) return void (swiped.current = false);
               if (activeId) void minimize();
+              else if (switcher) closeSwitcherToHome();
             }}
           >
             <span />

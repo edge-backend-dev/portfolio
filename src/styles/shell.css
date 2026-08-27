@@ -1835,28 +1835,54 @@
   background: rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(26px) saturate(1.3);
 }
+/* Once the App Switcher is settled the frost becomes a real surface: it catches
+   taps that miss a card (a tap on it dismisses the switcher — see IOSShell)
+   instead of letting them through to the home-screen icons showing behind the
+   blur. During a live swipe the bar owns the pointer, so this only matters once
+   the row has come to rest. */
+.ios-screen.switcher .ios-switch-scrim {
+  pointer-events: auto;
+}
 
 .ios-deck {
   position: absolute;
   inset: 0;
   z-index: 40;
-  /* The row's live geometry, written by IOSShell as the home bar lifts it: the
-     space between cards, and the corner they round to. Both arrive already
-     divided by the row's scale, so they land at their authored size on screen. */
-  --deck-gap: 0px;
+  /* The corner a card rounds to, written by IOSShell as the home bar lifts the
+     row. It arrives already divided by the row's scale, so it lands at its
+     authored size on screen. */
   --card-radius: 0px;
   /* The deck spans the whole screen and never unmounts, so it would otherwise
      sit over the home screen eating every tap. Only the slots take pointer
      events, and a hidden slot takes none. */
   pointer-events: none;
 }
+/* The row is transformed every frame while it's lifting or being scrolled as
+   the App Switcher — hint the compositor for that window only. */
+.ios-deck.switching {
+  will-change: transform;
+  /* A scroll of the deck is a drag straight across the cards, and the cards are
+     live app views full of text: without this a mouse drag selects its way
+     through the app it started on instead of paging the row. Touch never had
+     the problem, which is what made it easy to miss. */
+  user-select: none;
+  -webkit-user-select: none;
+}
 .ios-deck-slot {
   position: absolute;
   inset: 0;
-  /* Place in the row (--pos, set per slot) times one screen plus the current
-     gap. At rest the gap is zero, so the slots tile edge to edge and exactly
-     one of them fills the screen. */
-  transform: translateX(calc(var(--pos, 0) * (100% + var(--deck-gap))));
+  /* Place in the row (--pos, set per slot) times one screen, so at rest the
+     slots tile edge to edge and exactly one of them fills the screen.
+     --card-x is how far this card has been pulled out of that plain tiling and
+     into the App Switcher's deck, --card-scale is how far back in that deck it
+     sits (1 = at the focus), and --card-dy carries it up off the deck when it's
+     being thrown away. All three are written per slot by IOSShell as the row
+     lifts, and are at rest values here.
+     Order matters: the scale comes LAST, so it applies about the card's own
+     centre without dragging the offsets before it — a card's depth changes its
+     size, never where its centre projects to. */
+  transform: translateX(calc(var(--pos, 0) * 100% + var(--card-x, 0px)))
+    translateY(var(--card-dy, 0px)) scale(var(--card-scale, 1));
   /* Off-screen apps are kept out of the paint (and out of hit-testing) without
      unmounting them. `is-moving` is set for the length of a swipe or slide, when
      the neighbours genuinely need to be visible. */
@@ -1866,6 +1892,9 @@
 .ios-deck.is-moving .ios-deck-slot {
   visibility: visible;
   pointer-events: auto;
+}
+.ios-deck.switching .ios-deck-slot {
+  will-change: transform, opacity;
 }
 
 /* fullscreen app */
@@ -1885,7 +1914,54 @@
 }
 .ios-deck.switching .ios-appview {
   transition: none; /* the radius is rewritten every frame; don't chase it */
-  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.5);
+}
+/* A card behind another sits in its shadow. Laid OVER the card as its own
+   surface rather than taken out of the card's opacity: a translucent card would
+   show the blurred home screen through the app, which reads as a ghost rather
+   than as depth. --card-dim is written per slot by IOSShell from the card's
+   distance from the focus, so it fades in with the lift and tracks a scroll. */
+.ios-deck.switching .ios-deck-slot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius, 0px);
+  background: #000;
+  opacity: var(--card-dim, 0);
+  pointer-events: none;
+  will-change: opacity; /* rewritten every frame of a lift or a scroll */
+}
+/* Every card is visible while switching, but only the App Switcher itself is
+   interactive — a card's own content (buttons, links, scroll) shouldn't fire
+   while it's shown as a shrunk preview. The slot's own click (IOSShell) is
+   what reopens it; that keeps working because pointer-events is set on the
+   CONTENT, not the slot. */
+.ios-deck.switching .ios-deck-slot > * {
+  pointer-events: none;
+}
+.ios-deck.switching .ios-deck-slot {
+  cursor: pointer;
+}
+/* Settled App Switcher: the deck takes the gestures. Dragging anywhere on the
+   cards scrolls the stack, and dragging one upwards throws it off — see the
+   deck's pointer handlers in IOSShell. */
+.ios-screen.switcher .ios-deck {
+  pointer-events: auto;
+  touch-action: none;
+}
+/* Cards overlap in the deck, so each needs an outline of its own to read
+   against the one behind it: a hairline highlight plus a soft drop shadow that
+   separates the two. On the card, not the slot, so it follows the corner radius
+   the lift is animating, and symmetric — cards recede behind the focus in both
+   directions, not just from the left. Keyed off `switching` rather than the
+   settled switcher so it's there for the whole lift, which is when the deck is
+   opening up and the depth most needs to be legible. */
+.ios-deck.switching .ios-appview {
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.14),
+    18px 0 34px -12px rgba(0, 0, 0, 0.45),
+    -18px 0 34px -12px rgba(0, 0, 0, 0.45),
+    0 10px 22px rgba(0, 0, 0, 0.3),
+    0 30px 64px rgba(0, 0, 0, 0.5);
 }
 .ios-navbar {
   /* iOS 26 nav bar: a translucent Liquid Glass strip that the app content
