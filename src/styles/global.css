@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* design/ holds standalone source art (e.g. the link-preview card's HTML); its
+   CSS words would otherwise be picked up as utility candidates. */
+@source not "../../design";
 @import "./fonts.css";
 @import "./tokens.css";
 @import "./glass.css";

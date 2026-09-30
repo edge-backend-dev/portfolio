@@ -5,6 +5,9 @@ import tailwindcss from '@tailwindcss/vite';
 
 // Static output. Zero JS by default; React islands hydrate only where needed.
 export default defineConfig({
+  // Canonical origin. Link-preview tags need full URLs — WhatsApp, LinkedIn
+  // and Facebook ignore an og:image given as a bare path.
+  site: 'https://oluwadamilaredavid.com',
   output: 'static',
   // The floating dev-toolbar island is dev-only noise; turn it off.
   devToolbar: { enabled: false },

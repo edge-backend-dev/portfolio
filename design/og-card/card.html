@@ -1,0 +1,136 @@
+<!doctype html>
+<!--
+  Link-preview card (Open Graph / Twitter image) for the portfolio.
+  Rendered to public/og-image.jpg at 1200×630 by render.mjs — edit this file,
+  then re-run `node design/og-card/render.mjs`. The copy mirrors
+  src/data/profile.ts (name, role, tagline); update both together.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  @font-face {
+    font-family: "Inter";
+    src: url("../../public/fonts/inter-latin-wght-normal.woff2") format("woff2");
+    font-weight: 100 900;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+
+  body {
+    position: relative;
+    font-family: "Inter", sans-serif;
+    color: #f5f6f8;
+    -webkit-font-smoothing: antialiased;
+    background:
+      radial-gradient(760px 460px at -8% -12%, rgba(0, 114, 222, 0.30), transparent 70%),
+      radial-gradient(620px 420px at 38% 118%, rgba(0, 114, 222, 0.12), transparent 70%),
+      linear-gradient(135deg, #12151b 0%, #0b0d11 100%);
+  }
+
+  /* Portrait: full-bleed on the right, its grey studio backdrop fading into
+     the dark card so there is no hard edge between photo and background. */
+  .photo {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 580px;
+    height: 630px;
+    overflow: hidden;
+    mask-image: linear-gradient(to right, transparent 4%, #000 46%);
+  }
+  .photo img {
+    position: absolute;
+    width: 580px;
+    left: 10px;
+    top: -70px;
+  }
+  /* Soft studio vignette: pulls the bright backdrop corners down toward the
+     card's tone so the face stays the brightest thing on that side. */
+  .photo::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(440px 520px at 62% 42%, transparent 45%, rgba(11, 13, 17, 0.42) 100%);
+  }
+
+  .copy {
+    position: absolute;
+    left: 72px;
+    top: 0;
+    bottom: 0;
+    width: 620px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-bottom: 40px;
+  }
+
+  .name {
+    font-size: 78px;
+    font-weight: 760;
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+  }
+
+  .role {
+    margin-top: 26px;
+    font-size: 36px;
+    font-weight: 620;
+    letter-spacing: -0.015em;
+    color: #7ab8ff;
+  }
+
+  .tagline {
+    margin-top: 16px;
+    max-width: 500px;
+    font-size: 25px;
+    font-weight: 420;
+    line-height: 1.42;
+    color: #aeb6c1;
+  }
+
+  .site {
+    position: absolute;
+    left: 72px;
+    bottom: 56px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 22px;
+    font-weight: 540;
+    color: #d5dae1;
+  }
+
+  /* Same monogram as the favicon. */
+  .mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: #005fb8;
+    display: grid;
+    place-items: center;
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.01em;
+  }
+</style>
+</head>
+<body>
+  <div class="photo"><img src="portrait.jpg" alt="" /></div>
+
+  <div class="copy">
+    <h1 class="name">Oluwadamilare<br />David</h1>
+    <p class="role">AI Product Engineer</p>
+    <p class="tagline">I build complex systems, web apps, and AI automation — shipped in 1–4 weeks.</p>
+  </div>
+
+  <div class="site">
+    <span class="mark">OD</span>
+    oluwadamilaredavid.com
+  </div>
+</body>
+</html>

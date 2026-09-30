@@ -10,6 +10,12 @@ const {
   title = "Oluwadamilare David — AI Product Engineer",
   description = "AI Product Engineer building complex systems, web apps, and automation. Portfolio presented as the OS you're viewing it on.",
 } = Astro.props;
+
+// Every in-app path (/projects, /about+contact, …) serves this same page, so
+// all of them share one canonical URL and one preview card.
+const siteUrl = new URL("/", Astro.site).href;
+const ogImage = new URL("/og-image.jpg", Astro.site).href;
+const ogImageAlt = "Oluwadamilare David, AI Product Engineer — portrait with name, role, and oluwadamilaredavid.com";
 ---
 
 <!doctype html>
@@ -25,13 +31,26 @@ const {
     <meta name="theme-color" content="#1e3a5f" />
     <meta name="color-scheme" content="light dark" />
 
-    <!-- Open Graph / social -->
+    <link rel="canonical" href={siteUrl} />
+
+    <!-- Open Graph / social link preview. The card image is rendered from
+         design/og-card/card.html (see render.mjs there). -->
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Oluwadamilare David" />
+    <meta property="og:url" content={siteUrl} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:secure_url" content={ogImage} />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={ogImageAlt} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image:alt" content={ogImageAlt} />
 
     <!-- Warm the two above-the-fold images so they're already cached when their
          React islands request them: the desktop wallpaper (needed the instant the
